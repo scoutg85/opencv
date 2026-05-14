@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CIVNET Planner: Civil Affairs Network Engagement Planner</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body class="theme-dark">
+
+<!-- ========================================================== -->
+<!-- TRAINING / UNCLASSIFIED WARNING BANNER                     -->
+<!-- ========================================================== -->
+<div id="warning-banner" role="alert">
+  TRAINING / UNCLASSIFIED USE ONLY. Do not enter classified information, CUI,
+  protected personal information, intelligence source information, sensitive
+  real-world operational details, or information that could endanger personnel
+  or civilians.
+</div>
+
+<!-- ========================================================== -->
+<!-- HEADER / TOOLBAR                                            -->
+<!-- ========================================================== -->
+<header id="app-header">
+  <div class="brand">
+    <span class="brand-mark">CIVNET</span>
+    <span class="brand-sub">Civil Affairs Network Engagement Planner</span>
+  </div>
+  <nav id="primary-nav">
+    <button data-view="map"     class="nav-btn active">Map</button>
+    <button data-view="graph"   class="nav-btn">Network Graph</button>
+    <button data-view="cnde"    class="nav-btn">CNDE Cycle</button>
+    <button data-view="dashboard" class="nav-btn">Dashboard</button>
+    <button data-view="exports" class="nav-btn">Exports</button>
+    <button data-view="settings" class="nav-btn">Settings</button>
+  </nav>
+  <div class="header-actions">
+    <button id="btn-load-sample" title="Load sample training dataset">Load Sample</button>
+    <button id="btn-save-project" title="Save project to browser storage">Save</button>
+    <button id="btn-toggle-theme" title="Toggle light/dark mode">Theme</button>
+  </div>
+</header>
+
+<!-- ========================================================== -->
+<!-- MAIN WORKSPACE                                              -->
+<!-- ========================================================== -->
+<main id="workspace">
+
+  <!-- LEFT SIDE PANEL -->
+  <aside id="left-panel" class="side-panel">
+    <button class="collapse-btn" data-target="left-panel" title="Collapse">&laquo;</button>
+
+    <section class="panel-section">
+      <h3>Location Search</h3>
+      <input id="place-search" type="text" placeholder="Search address, city, place..." autocomplete="off" />
+      <small class="hint">Google Places Autocomplete. Enter address, city, or reference text.</small>
+    </section>
+
+    <section class="panel-section">
+      <h3>Create</h3>
+      <button id="btn-new-node" class="full">+ New Civil Network Node</button>
+      <button id="btn-new-connection" class="full">+ New Connection</button>
+      <button id="btn-new-loe" class="full">+ New Line of Effort</button>
+      <button id="btn-new-engagement" class="full">+ Log Engagement</button>
+      <button id="btn-new-task" class="full">+ New Task</button>
+    </section>
+
+    <section class="panel-section">
+      <h3>Map Overlay</h3>
+      <select id="map-overlay-select">
+        <option value="loe">Line of Effort</option>
+        <option value="cnde">CNDE Cycle Status</option>
+        <option value="risk">Risk</option>
+        <option value="influence">Influence</option>
+        <option value="access">Access</option>
+        <option value="info-gap">Information Gap</option>
+        <option value="trend">Assessment Trend</option>
+        <option value="entity">Entity Type</option>
+        <option value="priority">Engagement Priority</option>
+      </select>
+    </section>
+
+    <section class="panel-section">
+      <h3>Filters</h3>
+      <details>
+        <summary>By LOE</summary>
+        <div id="filter-loe" class="filter-group"></div>
+      </details>
+      <details>
+        <summary>By CNDE Status</summary>
+        <div id="filter-cnde" class="filter-group"></div>
+      </details>
+      <details>
+        <summary>By Entity Type</summary>
+        <div id="filter-entity" class="filter-group"></div>
+      </details>
+      <details>
+        <summary>By Priority / Risk / Access / Influence</summary>
+        <div id="filter-misc" class="filter-group"></div>
+      </details>
+      <button id="btn-clear-filters" class="full small">Clear Filters</button>
+    </section>
+
+    <section class="panel-section">
+      <h3>Node List <span id="node-count" class="count-badge">0</span></h3>
+      <ul id="node-list" class="scroll-list"></ul>
+    </section>
+
+    <section class="panel-section">
+      <h3>Lines of Effort</h3>
+      <ul id="loe-list" class="scroll-list"></ul>
+    </section>
+
+    <section class="panel-section">
+      <h3>Engagements</h3>
+      <ul id="engagement-list" class="scroll-list short"></ul>
+    </section>
+
+    <section class="panel-section">
+      <h3>Tasks</h3>
+      <ul id="task-list" class="scroll-list short"></ul>
+    </section>
+
+    <section class="panel-section">
+      <h3>Project</h3>
+      <button id="btn-export-json" class="full small">Export Project JSON</button>
+      <button id="btn-import-json" class="full small">Import Project JSON</button>
+      <input type="file" id="import-file" accept="application/json" style="display:none" />
+      <button id="btn-clear-project" class="full small danger">Clear Project</button>
+    </section>
+  </aside>
+
+  <!-- CENTER VIEWS -->
+  <section id="center-area">
+
+    <!-- MAP VIEW -->
+    <div id="view-map" class="view active">
+      <div id="map"></div>
+      <div id="map-fallback" class="map-fallback hidden">
+        <h3>Map could not load</h3>
+        <p>Add your Google Maps API key in <code>index.html</code> where it says
+          <code>YOUR_GOOGLE_MAPS_API_KEY</code>. Until then, you can still create
+          and edit nodes, but the map and Places Autocomplete features are
+          disabled.</p>
+      </div>
+    </div>
+
+    <!-- NETWORK GRAPH VIEW -->
+    <div id="view-graph" class="view">
+      <div class="view-header">
+        <h2>Network Graph</h2>
+        <small>Civil network relationships. TODO: replace simple SVG layout with Cytoscape.js or vis-network for richer interaction.</small>
+      </div>
+      <div id="network-graph"></div>
+    </div>
+
+    <!-- CNDE CYCLE VIEW -->
+    <div id="view-cnde" class="view">
+      <div class="view-header">
+        <h2>CNDE Cycle</h2>
+        <nav id="cnde-tabs">
+          <button data-cnde-tab="board"     class="cnde-tab active">Kanban Board</button>
+          <button data-cnde-tab="plan"      class="cnde-tab">Plan</button>
+          <button data-cnde-tab="engage"    class="cnde-tab">Engage</button>
+          <button data-cnde-tab="analyze"   class="cnde-tab">Analyze</button>
+          <button data-cnde-tab="develop"   class="cnde-tab">Develop</button>
+          <button data-cnde-tab="assess"    class="cnde-tab">Assess</button>
+          <button data-cnde-tab="integrate" class="cnde-tab">Integrate</button>
+        </nav>
+      </div>
+      <div class="cnde-panel" id="cnde-panel-board"></div>
+      <div class="cnde-panel hidden" id="cnde-panel-plan"></div>
+      <div class="cnde-panel hidden" id="cnde-panel-engage"></div>
+      <div class="cnde-panel hidden" id="cnde-panel-analyze"></div>
+      <div class="cnde-panel hidden" id="cnde-panel-develop"></div>
+      <div class="cnde-panel hidden" id="cnde-panel-assess"></div>
+      <div class="cnde-panel hidden" id="cnde-panel-integrate"></div>
+    </div>
+
+    <!-- DASHBOARD VIEW -->
+    <div id="view-dashboard" class="view">
+      <div class="view-header"><h2>Dashboard</h2></div>
+      <div id="dashboard-grid"></div>
+    </div>
+
+    <!-- EXPORTS VIEW -->
+    <div id="view-exports" class="view">
+      <div class="view-header"><h2>Exports</h2></div>
+      <div id="exports-grid">
+        <div class="export-card"><h4>Civil Network Engagement Plan</h4><p>Markdown narrative plan with civil considerations, LOEs, priorities, MOP/MOE, appendices.</p><button data-export="cnep">Export</button></div>
+        <div class="export-card"><h4>CA Running Estimate</h4><p>Mission, civil considerations, ASCOPE/PMESII, vulnerabilities, capabilities, risks.</p><button data-export="running-estimate">Export</button></div>
+        <div class="export-card"><h4>KLE / Engagement Tracker</h4><p>Markdown log of engagements with method, topics, commitments, follow-ups.</p><button data-export="kle">Export</button></div>
+        <div class="export-card"><h4>Civil Information Collection Matrix</h4><p>Information requirements vs. nodes and gaps.</p><button data-export="cicm">Export</button></div>
+        <div class="export-card"><h4>ASCOPE/PMESII Summary</h4><p>Narrative summary by ASCOPE and PMESII-PT categories.</p><button data-export="ascope">Export</button></div>
+        <div class="export-card"><h4>LOE Assessment</h4><p>Per-LOE progress, MOP/MOE roll-up, recommended adjustments.</p><button data-export="loe-assessment">Export</button></div>
+        <div class="export-card"><h4>Recommended FRAGO Tasks</h4><p>Task / Purpose / Effect statements derived from priorities.</p><button data-export="frago">Export</button></div>
+        <div class="export-card"><h4>Commander Update Summary</h4><p>What changed, what matters, what decisions are needed.</p><button data-export="commander">Export</button></div>
+        <div class="export-card"><h4>Information Gaps</h4><p>Open information gaps with source and confidence.</p><button data-export="gaps">Export</button></div>
+        <div class="export-card"><h4>Vulnerabilities &amp; Capabilities</h4><p>Civil vulnerabilities and capabilities summary.</p><button data-export="vulncap">Export</button></div>
+        <div class="export-card"><h4>Nodes CSV</h4><p>All nodes with key analytical fields.</p><button data-export="nodes-csv">Export</button></div>
+        <div class="export-card"><h4>Connections CSV</h4><p>All civil network connections.</p><button data-export="connections-csv">Export</button></div>
+        <div class="export-card"><h4>Engagements CSV</h4><p>Engagement log.</p><button data-export="engagements-csv">Export</button></div>
+        <div class="export-card"><h4>Tasks CSV</h4><p>Task tracker.</p><button data-export="tasks-csv">Export</button></div>
+        <div class="export-card"><h4>GeoJSON</h4><p>Geospatial export of nodes and connection lines.</p><button data-export="geojson">Export</button></div>
+        <div class="export-card"><h4>Printable HTML Report</h4><p>Single-page printable Civil Network Engagement Plan.</p><button data-export="html-report">Export</button></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS VIEW -->
+    <div id="view-settings" class="view">
+      <div class="view-header"><h2>Settings</h2></div>
+      <div class="settings-block">
+        <h3>Project Metadata</h3>
+        <label>Project / Mission name <input id="set-project-name" type="text" /></label>
+        <label>Area of Operations (AO) <input id="set-ao" type="text" /></label>
+        <label>Area of Interest (AI) <input id="set-ai" type="text" /></label>
+        <label>Unit / Team <input id="set-unit" type="text" /></label>
+        <label>Operator (Created by) <input id="set-operator" type="text" /></label>
+        <label>Higher HQ Objective <textarea id="set-higher-hq" rows="2"></textarea></label>
+        <label>Commander's Intent (training notional) <textarea id="set-cdr-intent" rows="3"></textarea></label>
+      </div>
+      <div class="settings-block">
+        <h3>Map Defaults</h3>
+        <label>Default latitude <input id="set-default-lat" type="number" step="0.0001" /></label>
+        <label>Default longitude <input id="set-default-lng" type="number" step="0.0001" /></label>
+        <label>Default zoom <input id="set-default-zoom" type="number" min="1" max="20" /></label>
+      </div>
+      <div class="settings-block">
+        <h3>Reminders</h3>
+        <p>This is unclassified training software. See banner at top. Do not enter
+           classified, CUI, PII, intelligence source, or sensitive operational
+           detail.</p>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- RIGHT SIDE DETAIL PANEL -->
+  <aside id="right-panel" class="side-panel">
+    <button class="collapse-btn right" data-target="right-panel" title="Collapse">&raquo;</button>
+    <div id="detail-content">
+      <div class="empty-state">
+        <h3>No item selected</h3>
+        <p>Click a node, connection, engagement, task, or LOE to view and edit
+           its details here. Or use the left panel to create a new item.</p>
+      </div>
+    </div>
+  </aside>
+
+</main>
+
+<!-- ========================================================== -->
+<!-- MODAL ROOT                                                  -->
+<!-- ========================================================== -->
+<div id="modal-root" class="hidden">
+  <div id="modal-backdrop"></div>
+  <div id="modal-box">
+    <header id="modal-header">
+      <h3 id="modal-title">Modal</h3>
+      <button id="modal-close" title="Close">&times;</button>
+    </header>
+    <div id="modal-body"></div>
+    <footer id="modal-footer">
+      <button id="modal-cancel" class="ghost">Cancel</button>
+      <button id="modal-confirm" class="primary">Save</button>
+    </footer>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast-host"></div>
+
+<!-- ========================================================== -->
+<!-- APP SCRIPT                                                  -->
+<!-- ========================================================== -->
+<script src="app.js"></script>
+
+<!-- ========================================================== -->
+<!-- GOOGLE MAPS JAVASCRIPT API                                  -->
+<!--                                                             -->
+<!-- INSERT YOUR API KEY HERE: replace YOUR_GOOGLE_MAPS_API_KEY  -->
+<!-- below. Without a key the app still runs, but the map and    -->
+<!-- Places Autocomplete will not load.                          -->
+<!-- ========================================================== -->
+<script
+  src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places&callback=initMap&v=weekly"
+  async defer
+  onerror="window.__mapsFailed && window.__mapsFailed()"></script>
+
+</body>
+</html>
