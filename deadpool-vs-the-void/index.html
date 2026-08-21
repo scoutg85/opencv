@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DEADPOOL vs. THE VOID</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  html, body {
+    margin: 0; padding: 0; background: #0b0710; height: 100%;
+    overflow: hidden; user-select: none;
+  }
+  #wrap {
+    position: fixed; inset: 0; display: flex;
+    align-items: center; justify-content: center;
+  }
+  canvas {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    background: #000;
+  }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="game" width="960" height="540"></canvas></div>
+<script src="assets/atlas.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

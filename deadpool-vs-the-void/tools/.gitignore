@@ -1,0 +1,9 @@
+mvc2/
+mvc2.zip
+cutouts/
+out_assets/
+raw/
+islands_*.json
+contact_*.png
+zoom_*.png
+__pycache__/
