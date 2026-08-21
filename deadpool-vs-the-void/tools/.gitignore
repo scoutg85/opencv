@@ -1,0 +1,6 @@
+raw/
+out_assets/
+islands_*.json
+contact_*.png
+zoom_*.png
+__pycache__/
