@@ -47,7 +47,9 @@ const CFG = {
   JUGG_HP: 3, JUGG_DASH_V: 760, JUGG_DAZED_T: 2.5, JUGG_TELE_T: 0.6,
   BOSS_HP: 3, WAVE_CD: 2.0, WAVE_CD_FAST: 1.5,
   WAVE_SPEED: 290,
-  WOLV_SWEEP_V: 900,
+  WOLV_SWEEP_V: 480,        // slower = the Wolverine rampage stays on screen longer
+
+  STICK_LEN: 92, STICK_W: 15,   // the popsicle stick under every puppet
 
   BUBBLE_CPS: 28,
   BUBBLE_HOLD: 2.5,
@@ -56,13 +58,14 @@ const CFG = {
 /* Per-character gameplay config. Art cutouts are single official MvC2
    illustrations; motion comes from the puppet animator below. */
 const CHARS = {
-  cable:          { h: 195 },                                   // player (Deadpool stand-in)
+  deadpool:       { h: 190 },                                   // the player
   wolverine:      { h: 180 },                                   // ally
   wolverine_bone: { h: 180 },                                   // W-box sweep variant
   sabretooth:     { h: 200 },
   sab_ko:         { h: 200 },                                   // headless KO body (gag)
   juggernaut:     { h: 255 },
-  thanos:         { h: 245 },                                   // final boss
+  cassandra:      { h: 230 },                                   // final boss (movie photo puppet)
+  dp_photo:       { h: 195 },                                   // ending cameo (movie photo puppet)
   sentinel:       { h: 265, speed: 45,  reach: 150, big: true },
   silver_samurai: { h: 215, speed: 80,  reach: 125 },
   omega_red:      { h: 210, speed: 95,  reach: 130 },
@@ -81,22 +84,22 @@ const PHASE_MIX = [
 ];
 const KIND_CAP = { sentinel: 1, blackheart: 2, doctor_doom: 2, spiral: 2, silver_samurai: 2 };
 const NICE = {
-  cable: 'CABLE', wolverine: 'WOLVERINE', sabretooth: 'SABRETOOTH', juggernaut: 'JUGGERNAUT',
-  thanos: 'THANOS', sentinel: 'SENTINEL', silver_samurai: 'SILVER SAMURAI', omega_red: 'OMEGA RED',
+  deadpool: 'DEADPOOL', wolverine: 'WOLVERINE', sabretooth: 'SABRETOOTH', juggernaut: 'JUGGERNAUT',
+  cassandra: 'CASSANDRA', sentinel: 'SENTINEL', silver_samurai: 'SILVER SAMURAI', omega_red: 'OMEGA RED',
   blackheart: 'BLACKHEART', shuma_gorath: 'SHUMA-GORATH', venom: 'VENOM', spiral: 'SPIRAL',
   marrow: 'MARROW', doctor_doom: 'DR. DOOM',
 };
 
-/* Dialogue script — exact lines, exact speakers. ("deadpool" lines are
-   delivered by Cable, the stand-in — MvC2 has no Deadpool artwork.) */
+/* Dialogue script — exact lines, exact speakers. */
 const LINES = {
   L1: { who: 'wolverine', text: "Let's go!" },
-  L2: { who: 'cable', text: 'I have the Wolverine!' },
-  L3: { who: 'cable', text: 'I am your favorite fan!' },
-  L4: { who: 'cable', text: 'Disney paid a lot for this CG' },
-  L5: { who: 'cable', text: 'I am Marvel Jesus' },
-  L6: { who: 'cable', text: "Let's go home." },
+  L2: { who: 'deadpool', text: 'I have the Wolverine!' },
+  L3: { who: 'deadpool', text: 'I am your favorite fan!' },
+  L4: { who: 'deadpool', text: 'Disney paid a lot for this CG' },
+  L5: { who: 'deadpool', text: 'I am Marvel Jesus' },
+  L6: { who: 'deadpool', text: "Let's go home." },
   L7: { who: 'missminutes', text: 'Great work! You saved the sacred timeline... You truly are Marvel Jesus.' },
+  L8: { who: 'dp_photo', text: 'I love it' },
 };
 
 /* ============================ CANVAS ============================== */
@@ -130,6 +133,7 @@ loadImage('mm_big', 'assets/sprites/miss_minutes_big.png');
 loadImage('bg_sky', 'assets/sprites/bg_sky.png');
 loadImage('bg_far', 'assets/sprites/bg_far.png');
 loadImage('bg_ground', 'assets/sprites/bg_ground.png');
+loadImage('bg_front', 'assets/sprites/bg_front.png');
 
 function charScale(name) { return CHARS[name].h / ATLAS.chars[name].h; }
 function dispH(kind) { return CHARS[kind].h; }
@@ -161,7 +165,10 @@ function drawPuppet(name, pose, wx, wy, facingRight, o = {}) {
     }
     case 'hover': dy = Math.sin(t * 3) * 9 - 6; rot = Math.sin(t * 2.2) * 0.05; break;
     case 'charge': rot = fw * 0.20; dy = -Math.abs(Math.sin(t * 11)) * 5; break;
-    case 'jump': rot = fw * Math.max(-0.12, Math.min(0.20, (o.vy || 0) / 2600)); sym = 1.05; break;
+    case 'jump':
+      rot = fw * Math.max(-0.12, Math.min(0.20, (o.vy || 0) / 2600)) + Math.sin(t * 5) * 0.10;
+      sym = 1.05;
+      break;
     case 'kneel': sym = 0.80; rot = fw * 0.03; break;
     case 'kneelmove': sym = 0.80; dy = -Math.abs(Math.sin(t * 7)) * 4; rot = fw * 0.05; break;
     case 'slash': dx = fw * Math.sin(p * Math.PI) * 30; rot = fw * (p < 0.4 ? -0.08 : 0.13); break;
@@ -182,6 +189,8 @@ function drawPuppet(name, pose, wx, wy, facingRight, o = {}) {
     case 'victory': dy = -Math.abs(Math.sin(t * 5)) * 10; break;
     case 'snarl': { const q = 1 + 0.035 * Math.sin(t * 12); sxm = q; sym = q; break; }
   }
+  // hand-held puppet micro-wobble
+  if (pose !== 'ko' && pose !== 'defeat') rot += Math.sin(t * 13) * 0.012;
   const mirror = (facingRight === !!meta.right) ? 1 : -1;
   ctx.save();
   if (o.flash) ctx.filter = 'brightness(2.4) saturate(0.3)';
@@ -189,6 +198,16 @@ function drawPuppet(name, pose, wx, wy, facingRight, o = {}) {
   ctx.translate(Math.round(wx - game.camX + dx), Math.round(wy + dy));
   ctx.rotate(rot);
   ctx.scale(mirror * sxm, sym);
+  // popsicle stick, glued behind the cardboard figure
+  ctx.fillStyle = '#8a6a3a';
+  ctx.fillRect(-CFG.STICK_W / 2 - 2, -8, CFG.STICK_W + 4, CFG.STICK_LEN + 8);
+  ctx.fillStyle = '#cfa768';
+  ctx.fillRect(-CFG.STICK_W / 2, -6, CFG.STICK_W, CFG.STICK_LEN + 2);
+  ctx.beginPath();
+  ctx.arc(0, CFG.STICK_LEN - 2, CFG.STICK_W / 2 + 2, 0, Math.PI);
+  ctx.fill();
+  ctx.fillStyle = '#b58c50';
+  ctx.fillRect(-2, -6, 3, CFG.STICK_LEN);
   ctx.drawImage(IMG[name], -w / 2, -h, w, h);
   ctx.restore();
 }
@@ -227,11 +246,13 @@ function drawUi(name, x, y, scale = 1, alpha = 1) {
   ctx.restore();
   return { w: fr[2] * scale, h: fr[3] * scale };
 }
-function drawMist(wx, kind) {
-  const w = dispW(kind);
-  const t = game.time + wx * 0.01;
-  drawUiWorld('mist', wx - 10 + Math.sin(t * 1.3) * 6, CFG.GROUND_Y + 2, { scale: Math.max(0.9, w / 190), alpha: 0.8 });
-  drawUiWorld('mist', wx + 14 - Math.sin(t * 1.7) * 6, CFG.GROUND_Y + 6, { scale: Math.max(0.7, w / 240), alpha: 0.6, flip: true });
+function drawForeground() {
+  // puppet-theater stage edge: overlaps the puppets and hides stick bottoms
+  const fw = 512, fh = 52;
+  const off = -((game.camX * 1.12) % fw);
+  for (let x = off - fw; x < CFG.W + fw; x += fw) {
+    ctx.drawImage(IMG.bg_front, px(x), CFG.GROUND_Y + 12, fw, fh);
+  }
 }
 
 /* ============================ AUDIO =============================== */
@@ -253,11 +274,15 @@ const AudioSys = {
     const d = this.noiseBuf.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     for (const k of ['level', 'boss']) {
-      const a = new Audio('assets/audio/' + k + '.mp3');
-      a.loop = true; a.volume = 0.5;
-      a.addEventListener('canplaythrough', () => { this.mp3ok[k] = true; }, { once: true });
-      a.addEventListener('error', () => {}, { once: true });
-      this.mp3[k] = a;
+      // first playable format wins: drop your own covers in assets/audio/
+      for (const ext of ['mp3', 'ogg', 'm4a']) {
+        const a = new Audio(`assets/audio/${k}.${ext}`);
+        a.loop = true; a.volume = 0.5;
+        a.addEventListener('canplaythrough', () => {
+          if (!this.mp3ok[k]) { this.mp3ok[k] = true; this.mp3[k] = a; }
+        }, { once: true });
+        a.addEventListener('error', () => {}, { once: true });
+      }
     }
   },
   freq(m) { return 440 * Math.pow(2, (m - 69) / 12); },
@@ -380,17 +405,18 @@ const game = {
   pauseSel: 0, congratsT: 0, musicNow: null,
 };
 let player, enemies, projectiles, pickups, fxs, floaters, bubbles, actors, boss, cut, wolvSweep;
+let endingVan = null;
 let spawnCd = 1.0;
 
 function resetWorld() {
   player = {
-    kind: 'cable', x: 300, y: CFG.GROUND_Y, vx: 0, vy: 0, onGround: true,
+    kind: 'deadpool', x: 300, y: CFG.GROUND_Y, vx: 0, vy: 0, onGround: true,
     facing: 1, hearts: CFG.MAX_HEARTS, inv: 0, flash: 0,
     weapon: 'pistol', ammo: 0, hasHelmet: false,
     state: 'normal', stateT: 0, stateDur: 1, mgCd: 0, mgFlash: 0, kneel: false,
   };
   enemies = []; projectiles = []; pickups = []; fxs = []; floaters = [];
-  bubbles = []; actors = []; boss = null; cut = null; wolvSweep = null;
+  bubbles = []; actors = []; boss = null; cut = null; wolvSweep = null; endingVan = null;
   game.camX = 0; game.arenaLock = null; game.shake = 0; game.fade = 0; game.fadeDir = 0;
   spawnCd = 1.0;
 }
@@ -403,7 +429,7 @@ function say(who, lineKey) {
   return line.text.length / CFG.BUBBLE_CPS + CFG.BUBBLE_HOLD;
 }
 function speakerPos(b) {
-  if (b.who === 'cable') return { x: player.x, y: player.y - dispH('cable') - 14 };
+  if (b.who === 'deadpool') return { x: player.x, y: player.y - dispH('deadpool') - 14 };
   const a = actors.find(a => a.kind === b.who);
   if (a) return { x: a.x, y: a.y - dispH(a.kind) - 14 };
   if (boss && boss.kind === b.who) return { x: boss.x, y: boss.y - dispH(boss.kind) - 14 };
@@ -699,12 +725,17 @@ function updateWolvSweep(dt) {
   if (!wolvSweep) return;
   wolvSweep.t += dt;
   wolvSweep.x += CFG.WOLV_SWEEP_V * dt;
-  if (wolvSweep.t - wolvSweep.lastArc > 0.12) {
+  if (wolvSweep.t - wolvSweep.lastArc > 0.09) {
     wolvSweep.lastArc = wolvSweep.t;
-    slashFx(wolvSweep.x + 70, CFG.GROUND_Y - 110, false);
+    const high = Math.floor(wolvSweep.t * 11) % 2 === 0;
+    slashFx(wolvSweep.x + 85, CFG.GROUND_Y - (high ? 150 : 85), false);
+  }
+  if (!wolvSweep.midRoar && wolvSweep.x > game.camX + CFG.W * 0.45) {
+    wolvSweep.midRoar = true;
+    AudioSys.sfx('roar');
   }
   for (const e of [...enemies]) {
-    if (Math.abs(e.x - wolvSweep.x) < 95) killEnemy(e, false);
+    if (Math.abs(e.x - wolvSweep.x) < 110) killEnemy(e, false);
   }
   if (wolvSweep.x > game.camX + CFG.W + 130) wolvSweep = null;
 }
@@ -719,13 +750,13 @@ function startJuggernaut() {
     dashDir: -1, hitT: 0, sink: 0, autoScene: 0, ph: 1.3,
   };
   AudioSys.sfx('roar');
-  say('cable', 'L3');
+  say('deadpool', 'L3');
 }
 function startFinalBoss() {
   game.arenaLock = { x0: game.camX };
   enemies = []; projectiles = projectiles.filter(p => !p.hostile);
   boss = {
-    kind: 'thanos', x: game.camX + CFG.W + 130, y: CFG.GROUND_Y, hp: CFG.BOSS_HP,
+    kind: 'cassandra', x: game.camX + CFG.W + 130, y: CFG.GROUND_Y, hp: CFG.BOSS_HP,
     state: 'enter', t: 0, stT: 0, facingRight: false, dead: false,
     helmetOn: false, waveCd: 2.2, hitT: 0, driftDir: -1, autoScene: 0, sink: 0, ph: 2.6,
   };
@@ -745,11 +776,11 @@ function bossHit(kind, box) {
     }
     return true;
   }
-  // thanos
+  // final boss (Cassandra)
   if (boss.state === 'enter' || boss.autoScene > 0) return true;
   if (!boss.helmetOn) {
     spark(boss.x, boss.y - 160, 1.3);
-    floatText('NO EFFECT', boss.x, boss.y - dispH('thanos') - 20, '#9ad1ff');
+    floatText('NO EFFECT', boss.x, boss.y - dispH(boss.kind) - 20, '#9ad1ff');
     AudioSys.sfx('noeffect');
   } else {
     boss.hp--; boss.hitT = 0.3; spark(boss.x, boss.y - 160, 1.7); AudioSys.sfx('hurt');
@@ -760,7 +791,7 @@ function bossHit(kind, box) {
 function juggDefeated() {
   boss.dead = true; boss.state = 'defeat'; boss.hitT = 0;
   poof(boss.x, boss.y - 130, 2.8);
-  say('cable', 'L4');
+  say('deadpool', 'L4');
   pickups.push({ type: 'helmet', x: boss.x, y: CFG.GROUND_Y, t: 0 });
   game.beat = 'helmetwait';   // arena stays locked until the helmet is collected
 }
@@ -777,7 +808,7 @@ function updateBoss(dt) {
   b.t += dt; b.stT += dt; b.hitT = Math.max(0, b.hitT - dt);
   if (b.dead) { b.sink = Math.min(1, b.sink + dt * 0.5); return; }
   if (b.kind === 'juggernaut') updateJugg(b, dt);
-  else updateThanos(b, dt);
+  else updateFinalBoss(b, dt);
 }
 function updateJugg(b, dt) {
   switch (b.state) {
@@ -820,14 +851,14 @@ function updateJugg(b, dt) {
       break;
   }
 }
-function updateThanos(b, dt) {
+function updateFinalBoss(b, dt) {
   if (b.autoScene > 0) {
     b.autoScene -= dt;
     if (b.autoScene <= 0) {
       b.autoScene = 0;
       b.helmetOn = true; player.hasHelmet = false;
       player.state = 'normal';
-      floatText('NOW HIT HIM!', b.x, b.y - dispH('thanos') - 30, '#ffe066');
+      floatText('NOW HIT HER!', b.x, b.y - dispH(b.kind) - 30, '#ffe066');
       AudioSys.sfx('helmet');
     }
     return;
@@ -847,7 +878,7 @@ function updateThanos(b, dt) {
       if (b.x <= game.arenaLock.x0 + 770) {
         b.x = game.arenaLock.x0 + 770;
         b.state = 'fight'; b.stT = 0;
-        say('cable', 'L5');
+        say('deadpool', 'L5');
       }
       break;
     case 'fight': {
@@ -912,16 +943,23 @@ function startCutscene1() {
                 pose: 'stalk', t: 0, facingRight: false, vx: 0, ph: 0.7 });
   runCut([
     { d: 2.0 },                                                  // Sabretooth stalks in
-    { d: 0.9, on: () => { const s = actor('sabretooth'); s.pose = 'snarl'; AudioSys.sfx('roar'); } },
+    { d: 1.3, on: () => { const s = actor('sabretooth'); s.pose = 'snarl'; AudioSys.sfx('roar'); } },
     { d: 0.9, on: () => {                                        // Wolverine dashes in
         actors.push({ kind: 'wolverine', x: game.camX - 100, y: CFG.GROUND_Y,
                       pose: 'run', t: 0, facingRight: true, vx: 620, stopAt: game.camX + 470, ph: 1.9 });
       } },
-    { d: 1.2, on: () => { const w = actor('wolverine'); w.pose = 'idle'; w.vx = 0; say('wolverine', 'L1'); } },
-    { d: 0.7, on: () => {
+    { d: 1.4, on: () => { const w = actor('wolverine'); w.pose = 'idle'; w.vx = 0; say('wolverine', 'L1'); } },
+    { d: 0.65, on: () => {                                       // first swipe
         const w = actor('wolverine');
-        w.pose = 'slash'; w.poseT = 0; w.poseDur = 0.7;
-        slashFx(w.x + 95, CFG.GROUND_Y - 120, false);
+        w.pose = 'slash'; w.poseT = 0; w.poseDur = 0.65;
+        slashFx(w.x + 95, CFG.GROUND_Y - 140, false);
+        AudioSys.sfx('slash');
+      } },
+    { d: 0.65, on: () => {                                       // second swipe
+        const w = actor('wolverine');
+        w.pose = 'slash'; w.poseT = 0; w.poseDur = 0.65;
+        slashFx(w.x + 100, CFG.GROUND_Y - 90, false);
+        spark(w.x + 120, CFG.GROUND_Y - 120, 1.2);
         AudioSys.sfx('slash');
       } },
     { d: 1.6, on: () => {                                        // comedic head pop
@@ -930,7 +968,7 @@ function startCutscene1() {
         st.headPop = { x: st.x - 6, y: st.y - 185, vy: -560, vx: 85, t: 0 };
         poof(st.x, st.y - 165, 1.8);
       } },
-    { d: 2.2, on: () => { say('cable', 'L2'); } },
+    { d: 2.2, on: () => { say('deadpool', 'L2'); } },
     { d: 1.2, on: () => {                                        // Wolverine runs off right
         const w = actor('wolverine');
         w.pose = 'run'; w.vx = 700; w.facingRight = true; w.stopAt = null;
@@ -966,13 +1004,31 @@ function startEnding() {
   runCut([
     { d: 1.6 },
     { d: 0.4, on: () => { const w = actor('wolverine'); if (w) { w.vx = 0; w.pose = 'idle'; } } },
-    { d: 3.0, on: () => { say('cable', 'L6'); } },
+    { d: 3.2, on: () => { say('deadpool', 'L6'); } },
+    { d: 2.2, on: () => {                                        // the family wagon arrives
+        endingVan = { x: game.camX - 340, vx: 300, stopX: Math.min(player.x, game.camX + 420) - 250 };
+      } },
+    { d: 0.6, on: () => {                                        // photo Deadpool pops up by the van
+        actors.push({ kind: 'dp_photo', x: (endingVan ? endingVan.stopX + 105 : player.x - 160),
+                      y: CFG.GROUND_Y, pose: 'victory', t: 0, facingRight: true, ph: 2.2 });
+      } },
+    { d: 3.2, on: () => { say('dp_photo', 'L8'); } },
     { d: 2.0, on: () => { game.fadeDir = 1; } },
     { d: 0.4, on: () => {
         game.mode = 'congrats'; game.congratsT = 0; game.fade = 0; game.fadeDir = 0;
         bubbles = [];
       } },
   ]);
+}
+function updateEndingVan(dt) {
+  if (!endingVan || !endingVan.vx) return;
+  endingVan.x += endingVan.vx * dt;
+  if (endingVan.x >= endingVan.stopX) {
+    endingVan.x = endingVan.stopX; endingVan.vx = 0;
+    fxs.push({ type: 'dust', x: endingVan.x + 90, y: CFG.GROUND_Y - 6, t: 0, scale: 1.6 });
+    fxs.push({ type: 'dust', x: endingVan.x - 90, y: CFG.GROUND_Y - 6, t: 0, scale: 1.4 });
+    AudioSys.sfx('crash');
+  }
 }
 
 /* ============================ BEATS =============================== */
@@ -1022,6 +1078,7 @@ function update(dt) {
   updateCut(dt);
   updatePlayer(dt);
   updateActors(dt);
+  updateEndingVan(dt);
   if (!cut) {
     updateSpawner(dt);
     for (const e of [...enemies]) updateEnemy(e, dt);
@@ -1070,7 +1127,6 @@ function drawBackground() {
 function drawEnemies() {
   for (const e of enemies) {
     const c = CHARS[e.kind];
-    drawMist(e.x, e.kind);
     const pose = e.state === 'attack' ? 'attack'
       : c.hover ? 'hover' : 'move';
     drawPuppet(e.kind, pose, e.x, e.y, e.facingRight,
@@ -1080,13 +1136,12 @@ function drawEnemies() {
 function drawBoss() {
   if (!boss) return;
   const b = boss;
-  drawMist(b.x, b.kind);
   drawPuppet(b.kind, bossPose(b), b.x, b.y, b.facingRight,
              { t: b.t, ph: b.ph, flash: !b.dead && b.hitT > 0, sink: b.sink,
                p: b.state === 'cast' ? b.stT / 0.7 : b.state === 'getup' ? b.stT / 0.6 : 0 });
-  if (b.kind === 'thanos' && b.helmetOn && !b.dead) {
-    const hh = dispH('thanos');
-    drawPiece('helmet', b.x + (b.facingRight ? 5 : -5), b.y - hh * 0.93, 66,
+  if (b.kind === 'cassandra' && b.helmetOn && !b.dead) {
+    const hh = dispH('cassandra');
+    drawPiece('helmet', b.x + (b.facingRight ? 4 : -4), b.y - hh * 0.90, 62,
               { rot: b.facingRight ? 0.06 : -0.06 });
   }
   if (b.kind === 'juggernaut' && b.state === 'dazed') {
@@ -1098,9 +1153,9 @@ function drawBoss() {
   if (!b.dead) {
     const label = b.kind === 'juggernaut'
       ? 'JUGGERNAUT — HIT HIM WHILE HE IS DOWN'
-      : b.helmetOn ? 'THANOS (VULNERABLE!)' : 'THANOS — NO EFFECT WITHOUT THE HELMET';
+      : b.helmetOn ? 'CASSANDRA (VULNERABLE!)' : 'CASSANDRA — NO EFFECT WITHOUT THE HELMET';
     const hpMax = b.kind === 'juggernaut' ? CFG.JUGG_HP : CFG.BOSS_HP;
-    if (b.kind !== 'thanos' || b.state !== 'enter') {
+    if (b.kind !== 'cassandra' || b.state !== 'enter') {
       text(label, CFG.W / 2, 34, 14, b.kind === 'juggernaut' ? '#fbb' : '#c9f', 'center');
       for (let i = 0; i < hpMax; i++) {
         ctx.fillStyle = i < b.hp ? (b.kind === 'juggernaut' ? '#d65959' : '#59d659') : '#333';
@@ -1112,7 +1167,6 @@ function drawBoss() {
 }
 function drawActors() {
   for (const a of actors) {
-    drawMist(a.x, a.kind);
     const dur = a.poseDur || 0.7;
     drawPuppet(a.kind, a.pose, a.x, a.y, a.facingRight,
                { t: a.t, ph: a.ph, sink: a.sink, alpha: a.alpha,
@@ -1123,13 +1177,12 @@ function drawActors() {
 function drawPlayer() {
   const p = player;
   if (p.inv > 0 && Math.floor(p.inv * 18) % 2 === 0 && p.flash <= 0) return;
-  drawMist(p.x, 'cable');
   const pose = playerPose();
-  drawPuppet('cable', pose, p.x, p.y, p.facing > 0,
+  drawPuppet('deadpool', pose, p.x, p.y, p.facing > 0,
              { flash: p.flash > 0, vy: p.vy,
                p: p.stateDur ? 1 - p.stateT / p.stateDur : 0 });
   if (p.state === 'place') drawPiece('helmet', p.x + p.facing * 62, p.y - 120, 64, { mirror: p.facing < 0 });
-  else if (p.hasHelmet) drawPiece('helmet', p.x - p.facing * 40, p.y - dispH('cable') - 10, 44);
+  
 }
 function drawProjectiles() {
   for (const pr of projectiles) {
@@ -1158,9 +1211,8 @@ function drawPickups() {
 }
 function drawWolvSweep() {
   if (!wolvSweep) return;
-  drawMist(wolvSweep.x, 'wolverine_bone');
   drawPuppet('wolverine_bone', 'slash', wolvSweep.x, CFG.GROUND_Y, true,
-             { t: wolvSweep.t, p: (wolvSweep.t * 4) % 1 });
+             { t: wolvSweep.t, p: (wolvSweep.t * 4) % 1, scale: 1.15 });
 }
 function drawFxs() {
   for (const f of fxs) {
@@ -1260,8 +1312,8 @@ function drawTitle() {
   ctx.fillStyle = 'rgba(10,6,14,0.55)'; ctx.fillRect(0, 0, CFG.W, CFG.H);
   text('DEADPOOL', CFG.W / 2, 58, 64, '#e02439', 'center');
   text('vs. THE VOID', CFG.W / 2, 132, 40, '#ffe066', 'center');
-  text('MvC2 official artwork edition — starring CABLE', CFG.W / 2, 184, 16, '#9df', 'center');
-  text('(Marvel vs. Capcom 2 has no Deadpool, so his buddy stepped in)', CFG.W / 2, 206, 13, '#caa', 'center');
+  text('— paper puppet edition —', CFG.W / 2, 184, 18, '#9df', 'center');
+  text('every hero glued to cardboard and a popsicle stick, as intended', CFG.W / 2, 208, 13, '#caa', 'center');
   const rows = [
     ['ARROWS', 'steer (the merc always runs) / DOWN = take a knee'],
     ['X  (A)', 'jump — straight up or diagonal, hold for height'],
@@ -1279,8 +1331,8 @@ function drawTitle() {
     text('MISSING ASSETS:', 12, 414, 13, '#f66');
     MISSING.slice(0, 6).forEach((m, i) => text(m, 12, 432 + i * 15, 12, '#f88'));
   }
-  text('Personal non-commercial fan homebrew. Artwork: Marvel vs. Capcom 2 (Capcom/Marvel),', CFG.W / 2, 498, 11, '#977', 'center');
-  text('from the Retro Game Official Asset Artwork collection on archive.org.', CFG.W / 2, 512, 11, '#977', 'center');
+  text('Personal non-commercial fan homebrew. Villains: MvC2 official artwork (archive.org).', CFG.W / 2, 498, 11, '#977', 'center');
+  text('Deadpool: Marvel Avengers Alliance art. Cassandra & photo Deadpool: movie renders.', CFG.W / 2, 512, 11, '#977', 'center');
 }
 function drawPause() {
   ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, CFG.W, CFG.H);
@@ -1370,6 +1422,7 @@ function render(dt) {
   ctx.setTransform(1, 0, 0, 1, 0, Math.round(shake));
   drawBackground();
   drawPickups();
+  if (endingVan) drawUiWorld('minivan', endingVan.x, CFG.GROUND_Y - 56);
   drawEnemies();
   drawBoss();
   drawActors();
@@ -1377,6 +1430,7 @@ function render(dt) {
   drawPlayer();
   drawProjectiles();
   drawFxs();
+  drawForeground();
   drawBubbles();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   drawHUD();

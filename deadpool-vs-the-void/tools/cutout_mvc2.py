@@ -93,60 +93,112 @@ def extract(num):
     alpha = np.array(a_im)
     alpha[np.array(Image.fromarray((fg * 255).astype(np.uint8)).filter(ImageFilter.MaxFilter(3))) == 0] = 0
     out = np.dstack([rgb.astype(np.uint8), alpha])
-    # crop to content
+    # crop to content (hard bottom cut — the cardboard border makes it look deliberate)
     ys, xs = np.nonzero(alpha > 8)
     y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
     crop = out[y0:y1, x0:x1]
     touches_bottom = y1 >= rgb.shape[0] - 3
-    if touches_bottom:
-        h = crop.shape[0]
-        fade = np.ones(h)
-        n_f = 26
-        fade[-n_f:] = np.linspace(1, 0.04, n_f)
-        crop = crop.copy()
-        crop[:, :, 3] = (crop[:, :, 3] * fade[:, None]).astype(np.uint8)
     im = Image.fromarray(crop, 'RGBA')
     if im.height > 760:
         s = 760 / im.height
         im = im.resize((max(1, int(im.width * s)), 760), Image.LANCZOS)
     return im, touches_bottom
 
+# Cardboard puppet border: every figure looks glued to a hand-cut cardboard
+# backing (the popsicle stick is drawn by the game engine).
+CARD_FILL = (219, 182, 128, 255)
+CARD_EDGE = (150, 108, 58, 255)
+
+def puppetize(im, border=9):
+    im = im.convert('RGBA')
+    pad = border + 4
+    big = Image.new('RGBA', (im.width + pad * 2, im.height + pad * 2), (0, 0, 0, 0))
+    big.paste(im, (pad, pad), im)
+    a = big.getchannel('A').point(lambda v: 255 if v > 30 else 0)
+    card = a.filter(ImageFilter.MaxFilter(border * 2 + 1))          # dilate silhouette
+    edge = a.filter(ImageFilter.MaxFilter((border + 3) * 2 + 1))
+    out = Image.new('RGBA', big.size, (0, 0, 0, 0))
+    out.paste(Image.new('RGBA', big.size, CARD_EDGE), (0, 0), edge)
+    out.paste(Image.new('RGBA', big.size, CARD_FILL), (0, 0), card)
+    out.paste(big, (0, 0), big)
+    # square off the bottom so the figure sits flat on its stick
+    ys = [y for y in range(out.height - 1, 0, -1)
+          if out.crop((0, y, out.width, y + 1)).getbbox()]
+    if ys:
+        d = ImageDraw.Draw(out)
+        bot = ys[0]
+        bb = out.getbbox()
+        d.rectangle([bb[0], max(0, bot - 6), bb[2] - 1, bot], fill=CARD_EDGE)
+    return out.crop(out.getbbox())
+
+# extra puppet inputs (already-transparent art dropped into puppet_in/)
+EXTRAS = {
+    'deadpool': 'puppet_in/deadpool_src.png',    # MAA Deadpool (TSR sheet 51721, full-body pose)
+    'cassandra': 'puppet_in/cassandra_src.png',  # movie Cassandra Nova render
+    'dp_photo': 'puppet_in/dp_photo_src.png',    # movie Deadpool photo (ending cameo)
+}
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     meta = {}
+    raws = {}
     for name, num in CAST.items():
         im, tb = extract(num)
-        im.save(os.path.join(OUT, f'{name}.png'))
-        meta[name] = {'w': im.width, 'h': im.height, 'bottom_fade': bool(tb)}
-        print(f'{name}: {im.width}x{im.height} fade={tb}')
-    # special pieces
+        raws[name] = im
+    # special pieces come from the RAW cutouts (before the cardboard border)
     for pname, (src, box) in PIECES.items():
-        im = Image.open(os.path.join(OUT, f'{src}.png')).convert('RGBA')
+        im = raws[src]
         x0, y0, x1, y1 = (int(box[0] * im.width), int(max(0, box[1]) * im.height),
                           int(box[2] * im.width), int(box[3] * im.height))
         piece = im.crop((x0, y0, x1, y1))
         if pname == 'helmet':
             # shade the face opening so the dome reads as an empty helmet
-            pd = ImageDraw.Draw(piece)
             pw, ph = piece.size
             mask = piece.getchannel('A').point(lambda a: 255 if a > 40 else 0)
             dark = Image.new('RGBA', piece.size, (0, 0, 0, 0))
             dd = ImageDraw.Draw(dark)
             dd.ellipse([-pw * 0.16, ph * 0.38, pw * 0.28, ph * 1.02], fill=(58, 30, 24, 255))
             piece.paste(dark, (0, 0), Image.composite(dark.getchannel('A'), Image.new('L', piece.size, 0), mask))
+        else:
+            piece = puppetize(piece, border=6)
         piece.save(os.path.join(OUT, f'{pname}.png'))
-        print(f'{pname}: {x1-x0}x{y1-y0} from {src}')
-    # headless Sabretooth KO variant
-    sab = Image.open(os.path.join(OUT, 'sabretooth.png')).convert('RGBA')
+        print(f'{pname}: {piece.width}x{piece.height} from {src}')
+    # headless Sabretooth KO variant (from raw, then carded)
+    sab = raws['sabretooth'].copy()
     d = ImageDraw.Draw(sab)
     e = SAB_KO_ERASE
     d.ellipse([e[0] * sab.width, e[1] * sab.height, e[2] * sab.width, e[3] * sab.height],
               fill=(0, 0, 0, 0))
-    sab.save(os.path.join(OUT, 'sab_ko.png'))
-    print('sab_ko written')
+    raws['sab_ko'] = sab
+    del raws['sab_ko']  # handled below with the cast
+    sab_ko = puppetize(sab)
+    sab_ko.save(os.path.join(OUT, 'sab_ko.png'))
+    meta['sab_ko'] = {'w': sab_ko.width, 'h': sab_ko.height}
+    print('sab_ko:', sab_ko.size)
+    # card up the cast
+    for name, im in raws.items():
+        card = puppetize(im)
+        card.save(os.path.join(OUT, f'{name}.png'))
+        meta[name] = {'w': card.width, 'h': card.height}
+        print(f'{name}: {card.width}x{card.height}')
+    # extra puppet inputs (already-transparent art in puppet_in/)
+    for name, path in EXTRAS.items():
+        srcp = os.path.join(HERE, path)
+        if not os.path.exists(srcp):
+            print(f'{name}: {path} missing, skipped')
+            continue
+        im = Image.open(srcp).convert('RGBA')
+        im = im.crop(im.getbbox())
+        if im.height > 760:
+            s = 760 / im.height
+            im = im.resize((max(1, int(im.width * s)), 760), Image.LANCZOS)
+        card = puppetize(im)
+        card.save(os.path.join(OUT, f'{name}.png'))
+        meta[name] = {'w': card.width, 'h': card.height}
+        print(f'{name}: {card.width}x{card.height} (extra)')
     json.dump(meta, open(os.path.join(OUT, 'meta.json'), 'w'), indent=1)
     # contact sheet for review
-    files = list(CAST.keys())
+    files = list(meta.keys())
     cols, cw, ch = 5, 280, 300
     rows = (len(files) + cols - 1) // cols
     sheet = Image.new('RGB', (cols * cw, rows * ch), (52, 42, 60))

@@ -14,9 +14,9 @@ GAME = os.path.normpath(os.path.join(HERE, '..'))  # repo game dir when run from
 if not os.path.exists(os.path.join(GAME, 'assets')):
     GAME = '/home/user/opencv/deadpool-vs-the-void'
 
-CHARS = ['cable', 'wolverine', 'wolverine_bone', 'sabretooth', 'sab_ko', 'juggernaut',
-         'thanos', 'sentinel', 'silver_samurai', 'omega_red', 'blackheart', 'shuma_gorath',
-         'venom', 'spiral', 'marrow', 'doctor_doom']
+CHARS = ['deadpool', 'wolverine', 'wolverine_bone', 'sabretooth', 'sab_ko', 'juggernaut',
+         'cassandra', 'dp_photo', 'sentinel', 'silver_samurai', 'omega_red', 'blackheart',
+         'shuma_gorath', 'venom', 'spiral', 'marrow', 'doctor_doom']
 PIECES = ['helmet', 'sab_head']
 
 # artwork natively faces right (flip when entity faces the other way)

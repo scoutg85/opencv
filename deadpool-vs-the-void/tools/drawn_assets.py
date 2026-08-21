@@ -268,6 +268,53 @@ def bg_far():
         d.polygon([(bx, ground_y), (bx + 6, ground_y - bh_), (bx + 14, ground_y)], fill=sil)
     return up(im, 2)
 
+def bg_front():
+    """Foreground overlap strip: the puppet-theater 'stage edge' that hides
+    the popsicle-stick bottoms and slightly overlaps the characters."""
+    W, H = 256, 26
+    im, d = px_img(W, H)
+    deep, dark, rim = (74, 48, 40, 255), (52, 32, 30, 255), (120, 82, 56, 255)
+    # jagged rocky top edge
+    for x in range(W):
+        h = int(7 + 5 * math.sin(x * 0.11) + 3 * math.sin(x * 0.043 + 2) + random.randint(-1, 1))
+        d.line([(x, H - 1), (x, H - h - 10)], fill=deep)
+        d.point((x, H - h - 10), fill=rim)
+        d.point((x, H - h - 9), fill=rim)
+    d.rectangle([0, H - 8, W, H], fill=dark)
+    # debris on the ridge
+    for i in range(16):
+        x, y = random.randint(0, W - 3), random.randint(H - 12, H - 3)
+        d.rectangle([x, y, x + random.randint(1, 2), y + 1], fill=(96, 62, 46, 255))
+    return up(im, 2)  # 512x52
+
+def minivan():
+    """Original pixel-art grey minivan (an Odyssey if you squint)."""
+    W, H = 96, 42
+    im, d = px_img(W, H)
+    body, dark, glass, hi = (176, 180, 188, 255), (92, 96, 106, 255), (60, 92, 120, 255), (226, 230, 236, 255)
+    # body: long sloped nose minivan profile, facing right
+    d.polygon([(2, 26), (6, 16), (18, 9), (34, 5), (66, 5), (80, 9), (90, 17), (93, 26),
+               (93, 34), (2, 34)], fill=body, outline=dark)
+    # windows
+    d.polygon([(20, 10), (34, 7), (34, 17), (16, 17)], fill=glass, outline=dark)
+    d.polygon([(37, 7), (56, 7), (56, 17), (37, 17)], fill=glass, outline=dark)
+    d.polygon([(59, 7), (74, 9), (80, 17), (59, 17)], fill=glass, outline=dark)
+    # sliding-door line + handles
+    d.line([(57, 8), (57, 32)], fill=dark)
+    d.line([(36, 8), (36, 32)], fill=dark)
+    d.rectangle([48, 21, 54, 22], fill=dark)
+    d.rectangle([60, 21, 66, 22], fill=dark)
+    # lights + bumper
+    d.rectangle([90, 20, 93, 24], fill=(255, 214, 120, 255))
+    d.rectangle([2, 22, 4, 26], fill=(200, 60, 50, 255))
+    d.rectangle([2, 31, 93, 34], fill=(140, 144, 152, 255))
+    d.line([(6, 15), (30, 9)], fill=hi)
+    # wheels
+    for wx in (22, 74):
+        d.ellipse([wx - 8, 28, wx + 8, 42], fill=(30, 30, 34, 255), outline=(10, 10, 12, 255))
+        d.ellipse([wx - 3, 33, wx + 3, 38], fill=(180, 180, 190, 255))
+    return up(im, 3)  # 288x126
+
 def bg_ground():
     W, H = 256, 48
     im, d = px_img(W, H)
@@ -306,6 +353,7 @@ def main():
         'dust': up(dust(), 3), 'mist': up(mist(), 3),
         'bubble': up(bubble(), 3),
         'missm0': up(miss_minutes(0), 3), 'missm1': up(miss_minutes(1), 3),
+        'minivan': minivan(),
     }
     PAD, W = 2, 900
     x, y, rowh = PAD, PAD, 0
@@ -325,6 +373,7 @@ def main():
     bg_sky().save(os.path.join(OUT, 'sprites', 'bg_sky.png'))
     bg_far().save(os.path.join(OUT, 'sprites', 'bg_far.png'))
     bg_ground().save(os.path.join(OUT, 'sprites', 'bg_ground.png'))
+    bg_front().save(os.path.join(OUT, 'sprites', 'bg_front.png'))
     json.dump({n: list(r) for n, r in rects.items()}, open(os.path.join(OUT, 'ui_frames.json'), 'w'))
     print('ui sheet', sheet.size, '| entries', len(rects))
 

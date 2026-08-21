@@ -41,3 +41,16 @@ Characters are single illustrations, puppet-animated by the engine (`drawPuppet`
 Artwork credit: Marvel vs. Capcom 2 official character art (Capcom/Marvel), preserved in
 the Retro Game Official Asset Artwork collection on archive.org. Personal, non-commercial
 fan use only.
+
+## Paper puppet edition additions
+
+- `cutout_mvc2.py` now runs `puppetize()` on every figure: a tan cardboard
+  border with a darker cut edge, a squared-off base, and a hard bottom cut.
+  The popsicle stick is drawn by the engine (`CFG.STICK_LEN` in game.js).
+- `EXTRAS` in `cutout_mvc2.py` pulls additional already-transparent art from
+  `puppet_in/` (untracked manual drops): `deadpool_src.png` (Marvel: Avengers
+  Alliance pose, TSR sheet 51721 island crop), `cassandra_src.png` and
+  `dp_photo_src.png` (movie photo renders). Re-supply these files to rebuild
+  from scratch.
+- `drawn_assets.py` adds `bg_front.png` (the foreground stage-edge strip that
+  overlaps the puppets and hides stick bottoms) and the `minivan` ui sprite.

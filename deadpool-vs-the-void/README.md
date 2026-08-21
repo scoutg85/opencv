@@ -1,29 +1,13 @@
-# DEADPOOL vs. THE VOID — MvC2 official artwork edition
+# DEADPOOL vs. THE VOID — paper puppet edition
 
 A single-level, side-scrolling browser brawler in the spirit of NES *Kung Fu*, built from the
-"DEADPOOL vs. THE VOID" production document. This edition uses the **official Marvel vs.
-Capcom 2 character artwork** from the
-[Retro Game Official Asset Artwork](https://archive.org/details/RetroGameOfficialAssetArtwork)
-collection on archive.org — 53 high-quality Bengus illustrations on clean white backgrounds,
-cut out automatically and **puppet-animated in code** (bob, lean, lunge, squash, sink). All
-UI, FX, and the Void backgrounds are original pixel art drawn in code.
+"DEADPOOL vs. THE VOID" production document — staged as a **paper puppet theater**: every
+character is a cut-out glued to a cardboard backing on a **popsicle stick**. A foreground
+ridge slightly overlaps the stage for depth and hides the stick bottoms; when a puppet jumps,
+the whole thing — stick and all — sails through the air like someone tossed it.
 
-> Personal, **non-commercial fan homebrew**. Marvel characters belong to Marvel/Disney and the
-> MvC2 artwork to Capcom/Marvel. Keep this private; do not sell or publicly distribute it.
-
-## The Deadpool situation
-
-**Neither requested pack contains Deadpool.** He was never in Marvel vs. Capcom 2's roster
-(his first Capcom fighting game was MvC3), and the "X-Men: Children of the Atom (Sega Saturn
-Japanese Version)" pack is listed in the collection's description but **was never actually
-uploaded** — the item's files stop alphabetically at "Street Fighter", which other archive
-users also point out in the reviews ("files from Su–Y are missing").
-
-So the playable lead is **CABLE** — Deadpool's canonical partner (comics and the Deadpool 2
-movie), complete with the huge gun. The title screen says so out loud, and every "Deadpool"
-line from the script is delivered by Cable, verbatim. Swap in a Deadpool image later by
-dropping a white-background artwork into `tools/mvc2/`, adding it in
-`tools/cutout_mvc2.py`, and renaming the player kind.
+> Personal, **non-commercial fan homebrew**. Marvel characters belong to Marvel/Disney; the
+> villain artwork to Capcom/Marvel. Keep this private; do not sell or publicly distribute it.
 
 ## How to play
 
@@ -31,67 +15,64 @@ Open `index.html` in Chrome/Chromium (double-click works — no server, no build
 
 | Key | NES | Action |
 |---|---|---|
-| ← / → | D-pad | Steer. **The merc always runs** — no walk, no idle. |
+| ← / → | D-pad | Steer. **Deadpool always runs** — no walk, no idle. |
 | ↓ | D-pad | Take a knee. ↓ + ←/→ = kneel-move (slower, lower profile). |
-| X | A | Jump — straight up or diagonal, hold for extra height. Clears Juggernaut's dash and Thanos's waves. |
-| Z | B | **Smart attack** — blade slash if an enemy is inside the strike box, otherwise fires the equipped gun. Slash also destroys Doom's photons and Spiral's swords mid-flight (Thanos's waves can only be jumped). |
+| X | A | Jump — straight up or diagonal, hold for extra height. Clears Juggernaut's dash and Cassandra's waves. |
+| Z | B | **Smart attack** — blade slash if an enemy is inside the strike box, otherwise fires the equipped gun. Slash also destroys Doom's photons and Spiral's swords mid-flight (Cassandra's waves can only be jumped). |
 | Shift | Select | Toggle pistol ↔ machine gun (needs ammo; the MG icon flashes at 0). |
 | Enter | Start | Start / pause (RESUME · RESTART PHASE · MUSIC ON-OFF). |
 | D | — | Debug: hitboxes + info. Press **V** inside debug for the artwork viewer. |
 
-Pistol = unlimited ammo. Machine gun = drop-fed (+20 per bullet box, cap 99), ~8 shots/sec,
-auto-swaps back to pistol at 0. Horde kills drop (20%): heart 40% / bullets 40% / **yellow
-W-box** 20% — the W-box summons **bone-claw Wolverine** to sprint across the screen and
-slash every horde enemy.
+Pistol = unlimited. Machine gun = drop-fed (+20 per bullet box, cap 99), ~8 shots/sec. Horde
+kills drop (20%): heart 40% / bullets 40% / **yellow W-box** 20% — the W-box summons
+bone-claw Wolverine for a long, screen-clearing rampage.
 
-Timeline: Phase 1 (2:00 horde) → Sabretooth/Wolverine cutscene (head-pop included) →
-Phase 2 (1:00) → **Juggernaut** mid-boss (jump his dash, hit him while dazed, 3 hits; his
-**helmet** drops — pick it up) → Phase 3 (1:00) → **Thanos** (ground waves must be jumped;
-INVULNERABLE with "NO EFFECT" until you touch him carrying the helmet, then 3 hits) →
-ending → Miss Minutes CONGRATS screen.
+Timeline: Phase 1 (2:00 horde) → Sabretooth/Wolverine cutscene (double claw swipe, head-pop) →
+Phase 2 (1:00) → **Juggernaut** (jump his dash, hit him while dazed, 3 hits; grab the
+**helmet** he drops — it then lives only in the HUD) → Phase 3 (1:00) → **CASSANDRA NOVA**
+(movie photo puppet; jump her psychic waves; she's INVULNERABLE until you touch her carrying
+the helmet — it gets jammed on her head — then 3 hits) → ending: the **minivan** pulls up and
+a photo Deadpool says "I love it" → Miss Minutes CONGRATS screen.
 
-## Cast (adjusted to what the MvC2 pack actually contains)
+## The cast
 
-| Role | Character | Notes |
-|---|---|---|
-| Player | **Cable** | Deadpool stand-in — see above. Pistol + giant gun both fit him perfectly. |
-| Ally | **Wolverine** (yellow/blue) | Cutscene rescue, ending. |
-| W-box sweep | **Wolverine (bone claws)** | The alternate MvC2 artwork. |
-| Cutscene villain | **Sabretooth** | Head pops off (a headless variant of the artwork is generated at build time). |
-| Mid-boss | **Juggernaut** | Dash / crash / dazed loop; the helmet item is literally the dome cut from his artwork. |
-| Final boss | **Thanos** | Cassandra Nova → Loki → now Thanos: biggest Marvel villain in the pack, stands in every frame, and the Juggernaut-helmet-blocks-his-powers gag carries over. "I am Marvel Jesus" still said by the player when he appears. |
-| Horde (melee) | Venom, Marrow, Shuma-Gorath (hovers), Omega Red, Silver Samurai, Blackheart, Sentinel (slow tank) | All famous named villains, one-hit kills, endless Void recycling. |
-| Horde (ranged) | **Dr. Doom** (green photon) + **Spiral** (thrown sword) | Exactly two projectile users, per the design doc (previously Electro/Magneto — neither is in the pack). |
-| Miss Minutes | hand-drawn pixel art | Not a Capcom character; drawn in code. |
+| Role | Art source |
+|---|---|
+| **Deadpool** (player) | Marvel: Avengers Alliance artwork (The Spriters Resource) — full-body pose, guns up |
+| **Cassandra Nova** (final boss) | *Deadpool & Wolverine* movie photo render, clipped onto cardboard — per the design doc, she STANDS in every frame |
+| Photo Deadpool (ending cameo) | movie photo render |
+| Wolverine, bone-claw Wolverine, Sabretooth, Juggernaut | MvC2 official artwork (archive.org "Retro Game Official Asset Artwork") |
+| Horde: Venom, Marrow, Shuma-Gorath, Omega Red, Silver Samurai, Blackheart, Sentinel + ranged Dr. Doom (photons) & Spiral (thrown swords) | MvC2 official artwork |
+| Minivan, Miss Minutes, all UI/FX/backgrounds | original pixel art drawn in code |
 
-Every character base rises from drawn Void mist — the official artworks are cropped at the
-frame's bottom edge, so the mist doubles as the "everyone's stuck in the Void" look.
+The cardboard borders, hard-cut bottoms, and sticks are added by the pipeline — the missing
+legs on the MvC2 artworks became the aesthetic instead of a bug.
 
-## Audio
+## Music
 
-Two **original** chiptune loops via WebAudio (no licensed melodies) plus all SFX. To use your
-own 8-bit covers, export real audio files to:
+The game ships with **original** chiptune loops (no licensed melodies). To use your own 8-bit
+covers — e.g. the NSYNC and Madonna covers you have in mind — save them as audio files named:
 
 ```
-assets/audio/level.mp3   (horde phases)
-assets/audio/boss.mp3    (Thanos fight)
+assets/audio/level.mp3   (or .ogg / .m4a)  — horde phases
+assets/audio/boss.mp3    (or .ogg / .m4a)  — Cassandra fight
 ```
 
-They're picked up automatically; music starts on the first key press (browser autoplay rules).
+If those files exist, the game plays them automatically (music starts on the first key press —
+browser autoplay rules). Note: audio can't be pulled out of a YouTube link by the game; the
+files themselves need to be in that folder.
 
 ## Files
 
 ```
 index.html          canvas shell (960×540, scaled to fit)
-game.js             the whole game — all tunables in CFG at the top
+game.js             the whole game — tunables in CFG at the top (incl. STICK_LEN)
 assets/atlas.js     generated atlas (script tag: works on file:// where fetch() can't)
-assets/chars/       18 MvC2 artwork cutouts (15 characters + helmet, popped head, headless KO)
-assets/sprites/     drawn pixel art: ui sheet, backgrounds, Miss Minutes
-assets/audio/       (optional) level.mp3 / boss.mp3
-tools/              asset pipeline: archive.org fetch → cutout → drawn assets → atlas
+assets/chars/       19 puppet cutouts (17 characters + helmet + poppable head)
+assets/sprites/     drawn pixel art: ui sheet, minivan, backgrounds incl. bg_front overlap layer
+assets/audio/       (optional) your music files
+tools/              asset pipeline (fetch → cutout → puppetize → drawn assets → atlas)
 ```
 
-Rebuild everything with `tools/build.sh` (needs python3 + pillow/numpy/scipy); the raw
-downloads stay untracked. Design-doc mechanics — always-running hero, smart attack, weapon
-rules, drops, phase script, exact 7-line dialogue with the scripted speakers, HUD, debug
-mode, missing-asset reporting — are implemented as written.
+Rebuild with `tools/build.sh` (python3 + pillow/numpy/scipy). The two movie renders are
+manual drops in `tools/puppet_in/` (documented in `tools/README.md`).
