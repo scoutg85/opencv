@@ -1,8 +1,11 @@
 'use strict';
 /* ================================================================== *
- *  DEADPOOL vs. THE VOID
+ *  DEADPOOL vs. THE VOID  —  MvC2 official-artwork edition
  *  Side-scrolling brawler in the spirit of NES Kung Fu.
- *  Sprites: Marvel: Avengers Alliance rips from The Spriters Resource.
+ *  Characters: official Marvel vs. Capcom 2 artwork (Capcom/Marvel),
+ *  cut out and puppet-animated in code. MvC2 has NO Deadpool, so
+ *  CABLE stands in as the playable lead. All UI/FX/backgrounds are
+ *  original pixel art drawn in code.
  *  Personal, non-commercial fan homebrew. Do not distribute or sell.
  * ================================================================== */
 
@@ -10,81 +13,89 @@
 const CFG = {
   W: 960, H: 540, GROUND_Y: 505,
 
-  RUN_SPEED: 330,           // Deadpool always runs at this speed
-  KNEEL_SPEED: 180,         // crouch-walk speed
-  JUMP_VY: -880,            // initial jump velocity
+  RUN_SPEED: 330,           // the hero always runs at this speed
+  KNEEL_SPEED: 180,
+  JUMP_VY: -880,
   GRAVITY: 2400,
-  HOLD_GRAVITY: 1250,       // reduced gravity while A held and rising (variable height)
+  HOLD_GRAVITY: 1250,       // reduced gravity while A held and rising
 
   MAX_HEARTS: 4,
-  INVINCIBLE_T: 1.0,        // seconds of i-frames after a hit
+  INVINCIBLE_T: 1.0,
   HIT_FLASH_T: 0.18,
 
-  MELEE_REACH: 118,         // smart attack: katana range in front of Deadpool
+  MELEE_REACH: 130,         // smart attack: blade range in front of the hero
   SLASH_T: 0.30,
   PISTOL_T: 0.24,
   MG_RATE: 0.125,           // ~8 shots/sec
   TRACER_SPEED: 780,
   AMMO_PER_BOX: 20, AMMO_CAP: 99,
 
-  DROP_CHANCE: 0.20,        // per horde kill
-  DROP_HEART: 0.40, DROP_AMMO: 0.40,  // remainder = W-box
+  DROP_CHANCE: 0.20,
+  DROP_HEART: 0.40, DROP_AMMO: 0.40,   // remainder = W-box
 
-  PHASE1_T: 120, PHASE2_T: 60, PHASE3_T: 60,   // seconds of horde combat
-  SPAWN_CAP: [3, 3, 4],                        // concurrent enemies per phase
+  PHASE1_T: 120, PHASE2_T: 60, PHASE3_T: 60,
+  SPAWN_CAP: [3, 3, 4],
   SPAWN_CD: [[1.4, 2.4], [1.1, 2.0], [0.9, 1.7]],
   SPAWN_FROM_LEFT: 0.2,
 
-  RANGED_STAND_OFF: 380,    // Electro/Magneto stop distance
+  RANGED_STAND_OFF: 380,    // Doom / Spiral stop distance
   RANGED_CD: 2.5,
   PROJ_SPEED: 240,
-  PROJ_HEIGHT: 62,          // above ground; jumpable
+  PROJ_HEIGHT: 66,          // above ground; jumpable
 
+  ATK_T: 0.55,              // melee enemy attack duration
   JUGG_HP: 3, JUGG_DASH_V: 760, JUGG_DAZED_T: 2.5, JUGG_TELE_T: 0.6,
-  LOKI_HP: 3, LOKI_WAVE_CD: 2.0, LOKI_WAVE_CD_FAST: 1.5,
+  BOSS_HP: 3, WAVE_CD: 2.0, WAVE_CD_FAST: 1.5,
   WAVE_SPEED: 290,
   WOLV_SWEEP_V: 900,
 
-  BUBBLE_CPS: 28,           // typewriter chars/sec
-  BUBBLE_HOLD: 2.5,         // seconds after text completes
+  BUBBLE_CPS: 28,
+  BUBBLE_HOLD: 2.5,
 };
 
-/* Per-character display config: target on-screen height + anim speeds.
-   All source sheets face LEFT; the engine flips when facing right. */
+/* Per-character gameplay config. Art cutouts are single official MvC2
+   illustrations; motion comes from the puppet animator below. */
 const CHARS = {
-  deadpool:        { h: 170, fps: { run: 11, slash: 12, pistol: 10, mg: 10, victory: 3, kneelmove: 8 } },
-  wolverine:       { h: 160, fps: { run: 11, slash: 12, idle: 3 } },
-  sabretooth:      { h: 165, fps: { stalk: 7, snarl: 3 } },
-  juggernaut:      { h: 225, fps: { idle: 3, charge: 11 } },
-  loki:            { h: 190, fps: { idle: 3, cast: 8 } },
-  magneto:         { h: 170, speed: 95,  ranged: true,  fps: { move: 4, attack: 7 } },
-  electro:         { h: 168, speed: 100, ranged: true,  fps: { move: 5, attack: 8 } },
-  doc_ock:         { h: 180, speed: 85,  reach: 120, fps: { move: 6, attack: 9 } },
-  doctor_doom:     { h: 175, speed: 90,  reach: 105, fps: { move: 7, attack: 9 } },
-  red_skull:       { h: 172, speed: 105, reach: 95,  fps: { move: 6, attack: 9 } },
-  mister_sinister: { h: 175, speed: 95,  reach: 100, fps: { move: 5, attack: 9 } },
-  kingpin:         { h: 210, speed: 70,  reach: 125, big: true, fps: { move: 5, attack: 8 } },
-  sentinel:        { h: 290, speed: 42,  reach: 150, big: true, fps: { move: 3, attack: 6 } },
-  modok:           { h: 200, speed: 80,  reach: 115, big: true, hover: true, fps: { move: 4, attack: 8 } },
-  toad:            { h: 145, speed: 130, reach: 92,  fps: { move: 9, attack: 9 } },
-  blob:            { h: 205, speed: 55,  reach: 110, big: true, fps: { move: 5, attack: 7 } },
+  cable:          { h: 195 },                                   // player (Deadpool stand-in)
+  wolverine:      { h: 180 },                                   // ally
+  wolverine_bone: { h: 180 },                                   // W-box sweep variant
+  sabretooth:     { h: 200 },
+  sab_ko:         { h: 200 },                                   // headless KO body (gag)
+  juggernaut:     { h: 255 },
+  thanos:         { h: 245 },                                   // final boss
+  sentinel:       { h: 265, speed: 45,  reach: 150, big: true },
+  silver_samurai: { h: 215, speed: 80,  reach: 125 },
+  omega_red:      { h: 210, speed: 95,  reach: 130 },
+  blackheart:     { h: 215, speed: 70,  reach: 120 },
+  shuma_gorath:   { h: 185, speed: 60,  reach: 115, hover: true },
+  venom:          { h: 195, speed: 115, reach: 110 },
+  spiral:         { h: 200, speed: 90,  ranged: true },
+  marrow:         { h: 190, speed: 120, reach: 100 },
+  doctor_doom:    { h: 205, speed: 85,  ranged: true },
 };
 
 const PHASE_MIX = [
-  ['toad', 'electro', 'blob', 'red_skull'],
-  ['toad', 'electro', 'blob', 'red_skull', 'magneto', 'doc_ock', 'doctor_doom', 'mister_sinister', 'kingpin'],
-  ['toad', 'electro', 'blob', 'red_skull', 'magneto', 'doc_ock', 'doctor_doom', 'mister_sinister', 'kingpin', 'sentinel', 'modok'],
+  ['marrow', 'venom', 'shuma_gorath', 'omega_red'],
+  ['marrow', 'venom', 'shuma_gorath', 'omega_red', 'spiral', 'doctor_doom', 'silver_samurai', 'blackheart'],
+  ['marrow', 'venom', 'shuma_gorath', 'omega_red', 'spiral', 'doctor_doom', 'silver_samurai', 'blackheart', 'sentinel'],
 ];
-const KIND_CAP = { sentinel: 1, kingpin: 1, blob: 2, modok: 1, magneto: 2, electro: 2 };
+const KIND_CAP = { sentinel: 1, blackheart: 2, doctor_doom: 2, spiral: 2, silver_samurai: 2 };
+const NICE = {
+  cable: 'CABLE', wolverine: 'WOLVERINE', sabretooth: 'SABRETOOTH', juggernaut: 'JUGGERNAUT',
+  thanos: 'THANOS', sentinel: 'SENTINEL', silver_samurai: 'SILVER SAMURAI', omega_red: 'OMEGA RED',
+  blackheart: 'BLACKHEART', shuma_gorath: 'SHUMA-GORATH', venom: 'VENOM', spiral: 'SPIRAL',
+  marrow: 'MARROW', doctor_doom: 'DR. DOOM',
+};
 
-/* Dialogue script — exact lines, exact speakers. */
+/* Dialogue script — exact lines, exact speakers. ("deadpool" lines are
+   delivered by Cable, the stand-in — MvC2 has no Deadpool artwork.) */
 const LINES = {
   L1: { who: 'wolverine', text: "Let's go!" },
-  L2: { who: 'deadpool', text: 'I have the Wolverine!' },
-  L3: { who: 'deadpool', text: 'I am your favorite fan!' },
-  L4: { who: 'deadpool', text: 'Disney paid a lot for this CG' },
-  L5: { who: 'deadpool', text: 'I am Marvel Jesus' },
-  L6: { who: 'deadpool', text: "Let's go home." },
+  L2: { who: 'cable', text: 'I have the Wolverine!' },
+  L3: { who: 'cable', text: 'I am your favorite fan!' },
+  L4: { who: 'cable', text: 'Disney paid a lot for this CG' },
+  L5: { who: 'cable', text: 'I am Marvel Jesus' },
+  L6: { who: 'cable', text: "Let's go home." },
   L7: { who: 'missminutes', text: 'Great work! You saved the sacred timeline... You truly are Marvel Jesus.' },
 };
 
@@ -99,21 +110,18 @@ function fitCanvas() {
 window.addEventListener('resize', fitCanvas); fitCanvas();
 
 /* ============================ ASSETS ============================== */
-const IMG = {};                 // name -> HTMLImageElement
+const IMG = {};
 const MISSING = [];
-let assetsPending = 0;
 function loadImage(name, src) {
-  assetsPending++;
   const im = new Image();
-  im.onload = () => { assetsPending--; };
-  im.onerror = () => { assetsPending--; MISSING.push(src); };
+  im.onerror = () => { MISSING.push(src); };
   im.src = src;
   IMG[name] = im;
 }
 const ATLAS = window.ATLAS || null;
 if (ATLAS) {
-  for (const [name, sh] of Object.entries(ATLAS.sheets)) loadImage(name, 'assets/' + sh.img);
-  loadImage('fx', 'assets/' + ATLAS.fx.img);
+  for (const [n, c] of Object.entries(ATLAS.chars)) loadImage(n, 'assets/' + c.img);
+  for (const [n, c] of Object.entries(ATLAS.pieces)) loadImage('piece_' + n, 'assets/' + c.img);
   loadImage('ui', 'assets/' + ATLAS.ui.img);
 } else {
   MISSING.push('assets/atlas.js');
@@ -123,59 +131,107 @@ loadImage('bg_sky', 'assets/sprites/bg_sky.png');
 loadImage('bg_far', 'assets/sprites/bg_far.png');
 loadImage('bg_ground', 'assets/sprites/bg_ground.png');
 
-/* Per-character scale: target height / reference frame height. */
-const SCALE = {};
-function charScale(name) {
-  if (SCALE[name]) return SCALE[name];
-  const sh = ATLAS.sheets[name];
-  const ref = (sh.anims.idle || sh.anims.move || sh.anims.run || sh.anims.stalk)[0];
-  const s = CHARS[name].h / sh.frames[ref][3];
-  SCALE[name] = s;
-  return s;
-}
-function animFrames(name, anim) { return ATLAS.sheets[name].anims[anim]; }
+function charScale(name) { return CHARS[name].h / ATLAS.chars[name].h; }
+function dispH(kind) { return CHARS[kind].h; }
+function dispW(kind) { return ATLAS.chars[kind].w * charScale(kind); }
 
-/* Anims whose source frames face RIGHT (MAA specials) — flip logic inverts. */
-const FLIP_EXCEPTIONS = { deadpool: { mg: true } };
-
-/* Draw a character frame anchored at feet (bottom-center), world coords. */
-function drawChar(name, anim, fi, wx, wy, facingRight, opts = {}) {
-  if (FLIP_EXCEPTIONS[name] && FLIP_EXCEPTIONS[name][anim]) facingRight = !facingRight;
-  const sh = ATLAS.sheets[name];
-  const frames = sh.anims[anim] || sh.anims.move || sh.anims.idle;
-  const fr = sh.frames[frames[Math.min(fi, frames.length - 1)]];
-  const s = (opts.scale || 1) * charScale(name);
-  const dw = fr[2] * s, dh = fr[3] * s;
-  const sx = Math.round(wx - game.camX), sy = Math.round(wy);
+/* ======================= PUPPET ANIMATOR ========================== *
+ * One official illustration per character; poses are procedural
+ * transforms (bob, lean, lunge, squash, spin, sink) about the feet.  */
+function drawPuppet(name, pose, wx, wy, facingRight, o = {}) {
+  const meta = ATLAS.chars[name];
+  if (!meta || !IMG[name] || !IMG[name].width) return;
+  const s = charScale(name) * (o.scale || 1);
+  const w = meta.w * s, h = meta.h * s;
+  const t = (o.t != null ? o.t : game.time) + (o.ph || 0);
+  const fw = facingRight ? 1 : -1;        // forward in screen space
+  const p = Math.max(0, Math.min(1, o.p != null ? o.p : 0));
+  let dx = 0, dy = 0, rot = 0, sxm = 1, sym = 1, alpha = o.alpha != null ? o.alpha : 1;
+  switch (pose) {
+    case 'idle': dy = Math.sin(t * 2.1) * 3; rot = Math.sin(t * 1.6) * 0.015; break;
+    case 'run': {
+      const hop = Math.abs(Math.sin(t * 8));
+      dy = -hop * 9; rot = fw * 0.07 + Math.sin(t * 8) * 0.03; sym = 1 - hop * 0.03;
+      break;
+    }
+    case 'move': case 'stalk': {
+      const hop = Math.abs(Math.sin(t * 5.5));
+      dy = -hop * 7; rot = fw * 0.05 + Math.sin(t * 5.5) * 0.025;
+      break;
+    }
+    case 'hover': dy = Math.sin(t * 3) * 9 - 6; rot = Math.sin(t * 2.2) * 0.05; break;
+    case 'charge': rot = fw * 0.20; dy = -Math.abs(Math.sin(t * 11)) * 5; break;
+    case 'jump': rot = fw * Math.max(-0.12, Math.min(0.20, (o.vy || 0) / 2600)); sym = 1.05; break;
+    case 'kneel': sym = 0.80; rot = fw * 0.03; break;
+    case 'kneelmove': sym = 0.80; dy = -Math.abs(Math.sin(t * 7)) * 4; rot = fw * 0.05; break;
+    case 'slash': dx = fw * Math.sin(p * Math.PI) * 30; rot = fw * (p < 0.4 ? -0.08 : 0.13); break;
+    case 'shoot': dx = -fw * 8 * (1 - p); rot = -fw * 0.03 * (1 - p); break;
+    case 'mg': dx = -fw * 6 + Math.sin(t * 45) * 2.2; rot = -fw * 0.04; break;
+    case 'cast': dy = -Math.sin(p * Math.PI) * 16; rot = -fw * 0.05; sym = 1 + 0.05 * Math.sin(p * Math.PI); break;
+    case 'attack': dx = fw * Math.sin(p * Math.PI) * 36; rot = fw * 0.13 * Math.sin(p * Math.PI); break;
+    case 'hit': rot = -fw * 0.16; dx = -fw * 10; break;
+    case 'dazed': rot = fw * 0.34 + Math.sin(t * 3) * 0.05; dy = 10; break;
+    case 'crash': rot = fw * 0.45; dx = fw * 8; break;
+    case 'getup': rot = fw * 0.30 * (1 - p); break;
+    case 'ko': case 'defeat': {
+      const k = Math.max(0, Math.min(1, o.sink || 0));
+      rot = fw * (0.5 + k * 0.85); dy = k * h * 0.55; alpha *= (1 - k * 0.45);
+      break;
+    }
+    case 'place': rot = fw * 0.10; dx = fw * 12; break;
+    case 'victory': dy = -Math.abs(Math.sin(t * 5)) * 10; break;
+    case 'snarl': { const q = 1 + 0.035 * Math.sin(t * 12); sxm = q; sym = q; break; }
+  }
+  const mirror = (facingRight === !!meta.right) ? 1 : -1;
   ctx.save();
-  if (opts.alpha != null) ctx.globalAlpha = opts.alpha;
-  if (opts.flash) ctx.filter = 'brightness(2.6) saturate(0.2)';
-  ctx.translate(sx, sy);
-  if (facingRight) ctx.scale(-1, 1);
-  ctx.drawImage(IMG[name], fr[0], fr[1], fr[2], fr[3], -dw / 2, -dh + (opts.dy || 0), dw, dh);
+  if (o.flash) ctx.filter = 'brightness(2.4) saturate(0.3)';
+  ctx.globalAlpha = alpha;
+  ctx.translate(Math.round(wx - game.camX + dx), Math.round(wy + dy));
+  ctx.rotate(rot);
+  ctx.scale(mirror * sxm, sym);
+  ctx.drawImage(IMG[name], -w / 2, -h, w, h);
   ctx.restore();
-  return { w: dw, h: dh };
 }
-function fxFrame(n) { return ATLAS.fx.frames[n]; }
-function drawFx(n, wx, wy, scale = 1, opts = {}) {
-  const fr = fxFrame(n);
-  if (!fr) return;
-  const dw = fr[2] * scale, dh = fr[3] * scale;
+function drawPiece(name, wx, wy, targetH, o = {}) {
+  const meta = ATLAS.pieces[name];
+  const img = IMG['piece_' + name];
+  if (!meta || !img || !img.width) return;
+  const s = targetH / meta.h;
+  const w = meta.w * s, h = meta.h * s;
   ctx.save();
-  if (opts.alpha != null) ctx.globalAlpha = opts.alpha;
+  ctx.globalAlpha = o.alpha != null ? o.alpha : 1;
   ctx.translate(Math.round(wx - game.camX), Math.round(wy));
-  if (opts.rot) ctx.rotate(opts.rot);
-  if (opts.flip) ctx.scale(-1, 1);
-  ctx.drawImage(IMG.fx, fr[0], fr[1], fr[2], fr[3], -dw / 2, -dh / 2, dw, dh);
+  if (o.rot) ctx.rotate(o.rot);
+  if (o.mirror) ctx.scale(-1, 1);
+  ctx.drawImage(img, -w / 2, -h / 2, w, h);
   ctx.restore();
 }
-function drawUi(n, x, y, scale = 1, alpha = 1) {
-  const fr = ATLAS.ui.frames[n];
+function uiFrame(n) { return ATLAS.ui.frames[n]; }
+function drawUiWorld(name, wx, wy, o = {}) {
+  const fr = uiFrame(name);
+  if (!fr) return;
+  const s = o.scale || 1;
+  ctx.save();
+  ctx.globalAlpha = o.alpha != null ? o.alpha : 1;
+  ctx.translate(Math.round(wx - game.camX), Math.round(wy));
+  if (o.rot) ctx.rotate(o.rot);
+  if (o.flip) ctx.scale(-1, 1);
+  ctx.drawImage(IMG.ui, fr[0], fr[1], fr[2], fr[3], -fr[2] * s / 2, -fr[3] * s / 2, fr[2] * s, fr[3] * s);
+  ctx.restore();
+}
+function drawUi(name, x, y, scale = 1, alpha = 1) {
+  const fr = uiFrame(name);
   if (!fr) return { w: 0, h: 0 };
   ctx.save(); ctx.globalAlpha = alpha;
   ctx.drawImage(IMG.ui, fr[0], fr[1], fr[2], fr[3], x, y, fr[2] * scale, fr[3] * scale);
   ctx.restore();
   return { w: fr[2] * scale, h: fr[3] * scale };
+}
+function drawMist(wx, kind) {
+  const w = dispW(kind);
+  const t = game.time + wx * 0.01;
+  drawUiWorld('mist', wx - 10 + Math.sin(t * 1.3) * 6, CFG.GROUND_Y + 2, { scale: Math.max(0.9, w / 190), alpha: 0.8 });
+  drawUiWorld('mist', wx + 14 - Math.sin(t * 1.7) * 6, CFG.GROUND_Y + 6, { scale: Math.max(0.7, w / 240), alpha: 0.6, flip: true });
 }
 
 /* ============================ AUDIO =============================== */
@@ -222,8 +278,8 @@ const AudioSys = {
     s.connect(f); f.connect(g); g.connect(dest || this.master);
     s.start(t); s.stop(t + dur + 0.02);
   },
-  /* Original chiptune loops (no licensed melodies) — replace with your own
-     8-bit covers by dropping level.mp3 / boss.mp3 into assets/audio/. */
+  /* Original chiptune loops (no licensed melodies) — drop your own 8-bit
+     covers into assets/audio/level.mp3 and boss.mp3 to override. */
   SONGS: {
     level: {
       spb: 0.105, len: 64,
@@ -271,8 +327,8 @@ const AudioSys = {
       const i = this.step % s.len, t = this.nextT;
       if (this.musicOn) {
         const b = s.bass[i], l = s.lead[i];
-        if (b != null && b !== undefined) this.osc('triangle', b, t, s.spb * 1.9, 0.30, this.musicGain);
-        if (l != null && l !== undefined) this.osc('square', l, t, s.spb * 1.6, 0.10, this.musicGain);
+        if (b != null) this.osc('triangle', b, t, s.spb * 1.9, 0.30, this.musicGain);
+        if (l != null) this.osc('square', l, t, s.spb * 1.6, 0.10, this.musicGain);
         if (i % s.hatEvery === 0) this.noise(t, 0.03, 0.05, 6000, this.musicGain);
         if (s.snareAt.includes(i)) this.noise(t, 0.09, 0.14, 1800, this.musicGain);
       }
@@ -317,10 +373,10 @@ function tap(code) { const p = pressed[code]; pressed[code] = false; return !!p;
 /* ============================ GAME STATE ========================== */
 const game = {
   mode: 'title',            // title | play | pause | gameover | congrats
-  beat: 'phase1',           // phase1|cut1|phase2|jugg|helmetwait|phase3|loki|ending
-  beatT: 0, phaseTimer: 0, camX: 0, arenaLock: null,
-  checkpoint: 'phase1', shake: 0, fade: 0, time: 0,
-  debug: false, viewer: false, viewerSheet: 0, viewerFrame: 0,
+  beat: 'phase1',           // phase1|cut1|phase2|jugg|helmetwait|phase3|boss|ending
+  beatT: 0, camX: 0, arenaLock: null,
+  checkpoint: 'phase1', shake: 0, fade: 0, fadeDir: 0, time: 0,
+  debug: false, viewer: false, viewerIdx: 0,
   pauseSel: 0, congratsT: 0, musicNow: null,
 };
 let player, enemies, projectiles, pickups, fxs, floaters, bubbles, actors, boss, cut, wolvSweep;
@@ -328,58 +384,61 @@ let spawnCd = 1.0;
 
 function resetWorld() {
   player = {
-    kind: 'deadpool', x: 300, y: CFG.GROUND_Y, vx: 0, vy: 0, onGround: true,
+    kind: 'cable', x: 300, y: CFG.GROUND_Y, vx: 0, vy: 0, onGround: true,
     facing: 1, hearts: CFG.MAX_HEARTS, inv: 0, flash: 0,
     weapon: 'pistol', ammo: 0, hasHelmet: false,
-    state: 'normal', stateT: 0, mgCd: 0, mgFlash: 0,
-    anim: 'run', fi: 0, ft: 0, kneel: false,
+    state: 'normal', stateT: 0, stateDur: 1, mgCd: 0, mgFlash: 0, kneel: false,
   };
   enemies = []; projectiles = []; pickups = []; fxs = []; floaters = [];
   bubbles = []; actors = []; boss = null; cut = null; wolvSweep = null;
-  game.camX = 0; game.arenaLock = null; game.shake = 0; game.fade = 0;
+  game.camX = 0; game.arenaLock = null; game.shake = 0; game.fade = 0; game.fadeDir = 0;
   spawnCd = 1.0;
 }
 resetWorld();
 
 /* ============================ HELPERS ============================= */
-function say(who, lineKey, opts = {}) {
+function say(who, lineKey) {
   const line = LINES[lineKey];
-  bubbles.push({ who: line.who, text: line.text, t: 0, done: false, ...opts });
+  bubbles.push({ who: line.who, text: line.text, t: 0 });
   return line.text.length / CFG.BUBBLE_CPS + CFG.BUBBLE_HOLD;
 }
 function speakerPos(b) {
-  if (b.at) return b.at();
-  if (b.who === 'deadpool') return { x: player.x, y: player.y - dispH('deadpool') - 14 };
+  if (b.who === 'cable') return { x: player.x, y: player.y - dispH('cable') - 14 };
   const a = actors.find(a => a.kind === b.who);
   if (a) return { x: a.x, y: a.y - dispH(a.kind) - 14 };
   if (boss && boss.kind === b.who) return { x: boss.x, y: boss.y - dispH(boss.kind) - 14 };
-  return { x: player.x, y: player.y - 200 };
+  return { x: player.x, y: player.y - 220 };
 }
-function dispH(kind) { return CHARS[kind].h; }
 function poof(x, y, scale = 1) { fxs.push({ type: 'poof', x, y, t: 0, scale }); AudioSys.sfx('poof'); }
-function spark(x, y, scale = 0.8) { fxs.push({ type: 'spark', x, y, t: 0, scale }); }
+function spark(x, y, scale = 1) { fxs.push({ type: 'spark', x, y, t: 0, scale }); }
+function slashFx(x, y, flip) { fxs.push({ type: 'slash', x, y, t: 0, scale: 1.6, flip }); }
+function muzzleFx(x, y, flip) { fxs.push({ type: 'muzzle', x, y, t: 0, scale: 1, flip }); }
 function floatText(text, x, y, color = '#ffe066') { floaters.push({ text, x, y, t: 0, color }); }
 function rectsOverlap(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 function playerHurtBox() {
-  const h = player.kneel ? 88 : 140;
-  return { x: player.x - 26, y: player.y - h, w: 52, h };
+  const h = player.kneel ? 105 : 155;
+  return { x: player.x - 28, y: player.y - h, w: 56, h };
 }
 function enemyBox(e) {
-  const h = dispH(e.kind), w = h * 0.42;
+  const h = dispH(e.kind), w = Math.min(dispW(e.kind) * 0.55, h * 0.55);
   return { x: e.x - w / 2, y: e.y - h, w, h };
 }
 function hurtPlayer() {
   if (player.inv > 0 || game.mode !== 'play' || cut) return;
   player.hearts--; player.inv = CFG.INVINCIBLE_T; player.flash = CFG.HIT_FLASH_T;
-  player.state = 'hit'; player.stateT = 0.3;
+  player.state = 'hit'; player.stateT = 0.3; player.stateDur = 0.3;
   AudioSys.sfx('hurt');
   if (player.hearts <= 0) { game.mode = 'gameover'; AudioSys.stopMusic(); }
 }
 
 /* ============================ SPAWNER ============================= */
 function phaseIndex() { return game.beat === 'phase1' ? 0 : game.beat === 'phase2' ? 1 : 2; }
+function makeEnemy(kind, x) {
+  return { kind, x, y: CFG.GROUND_Y, state: 'move', t: Math.random() * 9, stT: 0,
+           atkCd: 0.6 + Math.random(), fired: false, ph: Math.random() * 7 };
+}
 function updateSpawner(dt) {
   if (!['phase1', 'phase2', 'phase3'].includes(game.beat)) return;
   spawnCd -= dt;
@@ -391,11 +450,7 @@ function updateSpawner(dt) {
       kind = mix[Math.floor(Math.random() * mix.length)];
     } while (--guard > 0 && KIND_CAP[kind] && enemies.filter(e => e.kind === kind).length >= KIND_CAP[kind]);
     const fromLeft = Math.random() < CFG.SPAWN_FROM_LEFT;
-    enemies.push({
-      kind, x: fromLeft ? game.camX - 70 : game.camX + CFG.W + 70,
-      y: CFG.GROUND_Y, state: 'move', t: 0, fi: 0, ft: 0,
-      atkCd: 0.6 + Math.random(), fired: false, bob: Math.random() * 6,
-    });
+    enemies.push(makeEnemy(kind, fromLeft ? game.camX - 80 : game.camX + CFG.W + 80));
     const [a, b] = CFG.SPAWN_CD[pi];
     spawnCd = a + Math.random() * (b - a);
   }
@@ -406,55 +461,45 @@ function updateEnemy(e, dt) {
   const c = CHARS[e.kind];
   const dx = player.x - e.x;
   e.facingRight = dx > 0;
-  e.t += dt; e.ft += dt;
-  const fps = (c.fps && c.fps[e.state === 'attack' ? 'attack' : 'move']) || 6;
-  if (e.ft > 1 / fps) {
-    e.ft = 0; e.fi++;
-    const frames = animFrames(e.kind, e.state === 'attack' ? 'attack' : 'move');
-    if (e.fi >= frames.length) {
-      if (e.state === 'attack') { e.state = 'move'; e.atkCd = 0.7 + Math.random() * 0.5; e.fired = false; }
-      e.fi = 0;
-    }
-  }
-  if (c.hover) e.bob += dt * 4;
-  e.yOff = c.hover ? Math.sin(e.bob) * 8 - 8 : 0;
+  e.t += dt; e.stT += dt;
 
   if (e.state === 'move') {
     e.atkCd -= dt;
     if (c.ranged) {
       if (Math.abs(dx) > CFG.RANGED_STAND_OFF) e.x += Math.sign(dx) * (c.speed || 90) * dt;
-      else if (e.atkCd <= 0) { e.state = 'attack'; e.fi = 0; e.ft = 0; e.fired = false; }
+      else if (e.atkCd <= 0) { e.state = 'attack'; e.stT = 0; e.fired = false; }
     } else {
-      const reach = c.reach || 95;
+      const reach = c.reach || 100;
       if (Math.abs(dx) > reach * 0.85) e.x += Math.sign(dx) * (c.speed || 90) * dt;
-      else if (e.atkCd <= 0) { e.state = 'attack'; e.fi = 0; e.ft = 0; }
+      else if (e.atkCd <= 0) { e.state = 'attack'; e.stT = 0; }
     }
   } else if (e.state === 'attack') {
+    const p = e.stT / CFG.ATK_T;
     if (c.ranged) {
-      if (e.fi >= 2 && !e.fired) {
+      if (p >= 0.5 && !e.fired) {
         e.fired = true;
         projectiles.push({
-          type: e.kind === 'electro' ? 'bolt' : 'shard',
-          x: e.x + (e.facingRight ? 40 : -40), y: CFG.GROUND_Y - CFG.PROJ_HEIGHT,
+          type: e.kind === 'doctor_doom' ? 'photon' : 'sword',
+          x: e.x + (e.facingRight ? 50 : -50), y: CFG.GROUND_Y - CFG.PROJ_HEIGHT,
           vx: (e.facingRight ? 1 : -1) * CFG.PROJ_SPEED, t: 0, hostile: true,
         });
-        AudioSys.sfx(e.kind === 'electro' ? 'wave' : 'clang');
+        AudioSys.sfx(e.kind === 'doctor_doom' ? 'wave' : 'clang');
       }
-    } else if (e.fi >= 1) {
-      const reach = c.reach || 95;
+    } else if (p > 0.35 && p < 0.78) {
+      const reach = c.reach || 100;
       const box = {
         x: e.facingRight ? e.x : e.x - reach, y: CFG.GROUND_Y - dispH(e.kind) * 0.75,
         w: reach, h: dispH(e.kind) * 0.75,
       };
-      if (e.kind === 'modok') e.x += (e.facingRight ? 1 : -1) * 260 * dt;  // hover-ram
-      if (rectsOverlap(box, playerHurtBox())) hurtPlayer();
       e.atkBox = box;
+      if (rectsOverlap(box, playerHurtBox())) hurtPlayer();
     }
+    if (p >= 1) { e.state = 'move'; e.stT = 0; e.atkCd = 0.7 + Math.random() * 0.5; e.atkBox = null; }
   }
   if (e.state !== 'attack') e.atkBox = null;
 }
 function killEnemy(e, allowDrop = true) {
-  poof(e.x, e.y - dispH(e.kind) / 2, CHARS[e.kind].big ? 2.2 : 1.5);
+  poof(e.x, e.y - dispH(e.kind) / 2, CHARS[e.kind].big ? 2.4 : 1.7);
   enemies.splice(enemies.indexOf(e), 1);
   if (allowDrop && ['phase1', 'phase2', 'phase3'].includes(game.beat) && Math.random() < CFG.DROP_CHANCE) {
     const r = Math.random();
@@ -464,32 +509,28 @@ function killEnemy(e, allowDrop = true) {
 }
 
 /* ============================ PLAYER ============================== */
-function tryMelee() {
-  // smart attack: katana if any target inside the strike box
-  const reachBox = {
-    x: player.facing > 0 ? player.x + 8 : player.x - 8 - CFG.MELEE_REACH,
-    y: player.y - 170, w: CFG.MELEE_REACH, h: 180,
+function meleeBox() {
+  return {
+    x: player.facing > 0 ? player.x + 10 : player.x - 10 - CFG.MELEE_REACH,
+    y: player.y - 195, w: CFG.MELEE_REACH, h: 205,
   };
-  let hit = false;
-  for (const e of [...enemies]) {
-    if (rectsOverlap(reachBox, enemyBox(e))) hit = true;
-  }
-  if (boss && !boss.dead && rectsOverlap(reachBox, enemyBox(boss))) hit = true;
+}
+function tryMelee() {
+  const box = meleeBox();
+  for (const e of enemies) if (rectsOverlap(box, enemyBox(e))) return true;
+  if (boss && !boss.dead && rectsOverlap(box, enemyBox(boss))) return true;
   for (const p of projectiles) {
-    if (p.hostile && (p.type === 'shard' || p.type === 'bolt') &&
-        rectsOverlap(reachBox, { x: p.x - 20, y: p.y - 20, w: 40, h: 40 })) hit = true;
+    if (p.hostile && (p.type === 'photon' || p.type === 'sword') &&
+        rectsOverlap(box, { x: p.x - 22, y: p.y - 18, w: 44, h: 36 })) return true;
   }
-  return hit;
+  return false;
 }
 function doSlashDamage() {
-  const box = {
-    x: player.facing > 0 ? player.x + 8 : player.x - 8 - CFG.MELEE_REACH,
-    y: player.y - 180, w: CFG.MELEE_REACH, h: 190,
-  };
+  const box = meleeBox();
   for (const e of [...enemies]) if (rectsOverlap(box, enemyBox(e))) killEnemy(e);
   for (const p of [...projectiles]) {
-    if (p.hostile && (p.type === 'shard' || p.type === 'bolt') &&
-        rectsOverlap(box, { x: p.x - 20, y: p.y - 20, w: 40, h: 40 })) {
+    if (p.hostile && (p.type === 'photon' || p.type === 'sword') &&
+        rectsOverlap(box, { x: p.x - 22, y: p.y - 18, w: 44, h: 36 })) {
       spark(p.x, p.y, 1);
       projectiles.splice(projectiles.indexOf(p), 1);
     }
@@ -497,21 +538,20 @@ function doSlashDamage() {
   if (boss) bossHit('slash', box);
 }
 function fireGun() {
-  const kneel = player.kneel;
-  const muzzY = player.y - (kneel ? 64 : 96);
-  const mx = player.x + player.facing * 62;
+  const muzzY = player.y - (player.kneel ? 82 : 122);
+  const mx = player.x + player.facing * 60;
   projectiles.push({
     type: player.weapon === 'mg' ? 'mgtracer' : 'tracer',
     x: mx, y: muzzY, vx: player.facing * CFG.TRACER_SPEED, t: 0, hostile: false,
   });
-  spark(mx + player.facing * 8, muzzY, 0.45);
+  muzzleFx(mx + player.facing * 14, muzzY, player.facing < 0);
   AudioSys.sfx(player.weapon === 'mg' ? 'mg' : 'pistol');
 }
 function updatePlayer(dt) {
   const p = player;
   p.inv = Math.max(0, p.inv - dt); p.flash = Math.max(0, p.flash - dt);
   p.mgFlash = Math.max(0, p.mgFlash - dt);
-  const inputLocked = !!cut || (boss && boss.autoScene);
+  const inputLocked = !!cut || (boss && boss.autoScene > 0);
 
   let dir = 0;
   if (!inputLocked) {
@@ -521,7 +561,6 @@ function updatePlayer(dt) {
   if (dir !== 0) p.facing = dir;
   p.kneel = !inputLocked && p.onGround && !!keys.ArrowDown && p.state !== 'place';
 
-  // weapon toggle
   if (!inputLocked && (tap('ShiftLeft') || tap('ShiftRight'))) {
     if (p.weapon === 'pistol') {
       if (p.ammo > 0) p.weapon = 'mg';
@@ -529,81 +568,69 @@ function updatePlayer(dt) {
     } else p.weapon = 'pistol';
   }
 
-  // jump
   if (!inputLocked && tap('KeyX') && p.onGround) {
     p.vy = CFG.JUMP_VY; p.onGround = false; AudioSys.sfx('jump');
+    fxs.push({ type: 'dust', x: p.x, y: p.y - 4, t: 0, scale: 1.2 });
   }
-  // gravity (variable jump height while holding)
   if (!p.onGround) {
     p.vy += (keys.KeyX && p.vy < 0 ? CFG.HOLD_GRAVITY : CFG.GRAVITY) * dt;
     p.y += p.vy * dt;
-    if (p.y >= CFG.GROUND_Y) { p.y = CFG.GROUND_Y; p.vy = 0; p.onGround = true; }
+    if (p.y >= CFG.GROUND_Y) {
+      p.y = CFG.GROUND_Y; p.vy = 0; p.onGround = true;
+      fxs.push({ type: 'dust', x: p.x, y: p.y - 4, t: 0, scale: 1.2 });
+    }
   }
 
-  // horizontal: always full run speed on the ground; kneel-move is slower
   const spd = p.kneel ? CFG.KNEEL_SPEED : CFG.RUN_SPEED;
   if (!inputLocked) p.x += dir * spd * dt;
   const lockL = game.arenaLock ? game.arenaLock.x0 + 40 : game.camX + 30;
   const lockR = game.arenaLock ? game.arenaLock.x0 + CFG.W - 40 : Infinity;
   p.x = Math.max(lockL, Math.min(lockR, p.x));
 
-  // camera
-  if (!game.arenaLock) {
-    game.camX = Math.max(game.camX, p.x - 380);
-  } else game.camX = game.arenaLock.x0;
+  if (!game.arenaLock) game.camX = Math.max(game.camX, p.x - 380);
+  else game.camX = game.arenaLock.x0;
 
-  // state timers
   if (p.state !== 'normal') {
     p.stateT -= dt;
-    if (p.state === 'slash' && !p.slashDone && p.stateT < CFG.SLASH_T * 0.6) {
+    if (p.state === 'slash' && !p.slashDone && p.stateT < CFG.SLASH_T * 0.62) {
       p.slashDone = true; doSlashDamage();
     }
-    if (p.stateT <= 0) { p.state = 'normal'; }
+    if (p.stateT <= 0) p.state = 'normal';
   }
 
-  // smart attack
   if (!inputLocked && p.state !== 'place') {
     if (tap('KeyZ')) {
       if (tryMelee()) {
-        p.state = 'slash'; p.stateT = CFG.SLASH_T; p.slashDone = false;
+        p.state = 'slash'; p.stateT = CFG.SLASH_T; p.stateDur = CFG.SLASH_T; p.slashDone = false;
+        slashFx(p.x + p.facing * 78, p.y - 110, p.facing < 0);
         AudioSys.sfx('slash');
       } else if (p.weapon === 'pistol') {
-        p.state = 'shootP'; p.stateT = CFG.PISTOL_T; fireGun();
+        p.state = 'shoot'; p.stateT = CFG.PISTOL_T; p.stateDur = CFG.PISTOL_T; fireGun();
       } else if (p.ammo > 0) {
-        p.state = 'shootMG'; p.stateT = 0.15; p.mgCd = 0; p.ammo--; fireGun();
+        p.state = 'mg'; p.stateT = 0.15; p.stateDur = 0.15; p.mgCd = 0; p.ammo--; fireGun();
       }
     }
-    // MG auto-fire while held
     if (keys.KeyZ && p.weapon === 'mg' && p.state !== 'slash') {
       p.mgCd -= dt;
       if (p.mgCd <= 0 && p.ammo > 0 && !tryMelee()) {
         p.mgCd = CFG.MG_RATE; p.ammo--; fireGun();
-        p.state = 'shootMG'; p.stateT = 0.15;
+        p.state = 'mg'; p.stateT = 0.15; p.stateDur = 0.15;
       }
     }
     if (p.ammo <= 0 && p.weapon === 'mg') p.weapon = 'pistol';
   }
-
-  // pick anim
-  let anim = 'run', loop = true;
-  if (p.state === 'hit') { anim = 'hit'; loop = false; }
-  else if (p.state === 'place') { anim = 'place'; loop = false; }
-  else if (p.state === 'slash') { anim = 'slash'; loop = false; }
-  else if (p.state === 'shootP') { anim = 'pistol'; loop = false; }
-  else if (p.state === 'shootMG') { anim = 'mg'; }
-  else if (!p.onGround) { anim = 'jump'; }
-  else if (p.kneel) { anim = dir !== 0 ? 'kneelmove' : 'kneel'; }
-  else if (cut) { anim = 'idle'; }
-  if (anim !== p.anim) { p.anim = anim; p.fi = 0; p.ft = 0; }
-  const fps = (CHARS.deadpool.fps && CHARS.deadpool.fps[anim]) || 9;
-  p.ft += dt;
-  const frames = animFrames('deadpool', anim);
-  if (anim === 'jump') {
-    p.fi = p.vy < -200 ? 0 : p.vy < 300 ? 1 : 2;
-  } else if (p.ft > 1 / fps) {
-    p.ft = 0; p.fi++;
-    if (p.fi >= frames.length) p.fi = loop ? 0 : frames.length - 1;
-  }
+}
+function playerPose() {
+  const p = player;
+  if (p.state === 'hit') return 'hit';
+  if (p.state === 'place') return 'place';
+  if (p.state === 'slash') return 'slash';
+  if (p.state === 'shoot') return 'shoot';
+  if (p.state === 'mg') return 'mg';
+  if (!p.onGround) return 'jump';
+  if (p.kneel) return (keys.ArrowLeft || keys.ArrowRight) ? 'kneelmove' : 'kneel';
+  if (cut) return 'idle';
+  return 'run';
 }
 
 /* ========================= PROJECTILES ============================ */
@@ -615,8 +642,8 @@ function updateProjectiles(dt) {
     }
     if (pr.hostile) {
       const box = pr.type === 'wave'
-        ? { x: pr.x - 60, y: pr.y - 44, w: 120, h: 48 }
-        : { x: pr.x - 22, y: pr.y - 14, w: 44, h: 28 };
+        ? { x: pr.x - 62, y: pr.y - 48, w: 124, h: 52 }
+        : { x: pr.x - 24, y: pr.y - 16, w: 48, h: 32 };
       if (rectsOverlap(box, playerHurtBox())) {
         hurtPlayer();
         if (pr.type !== 'wave') projectiles.splice(projectiles.indexOf(pr), 1);
@@ -630,9 +657,9 @@ function updateProjectiles(dt) {
       if (!consumed && boss) consumed = bossHit('shot', box);
       if (!consumed) {
         for (const hp of [...projectiles]) {
-          if (hp.hostile && (hp.type === 'shard' || hp.type === 'bolt') &&
-              rectsOverlap(box, { x: hp.x - 20, y: hp.y - 16, w: 40, h: 32 })) {
-            spark(hp.x, hp.y, 0.9);
+          if (hp.hostile && (hp.type === 'photon' || hp.type === 'sword') &&
+              rectsOverlap(box, { x: hp.x - 22, y: hp.y - 18, w: 44, h: 36 })) {
+            spark(hp.x, hp.y, 1);
             projectiles.splice(projectiles.indexOf(hp), 1);
             consumed = true; break;
           }
@@ -648,7 +675,7 @@ function updateProjectiles(dt) {
 function updatePickups(dt) {
   for (const pk of [...pickups]) {
     pk.t += dt;
-    const box = { x: pk.x - 26, y: pk.y - 52, w: 52, h: 52 };
+    const box = { x: pk.x - 28, y: pk.y - 56, w: 56, h: 56 };
     if (rectsOverlap(box, playerHurtBox())) {
       if (pk.type === 'heart') player.hearts = Math.min(CFG.MAX_HEARTS, player.hearts + 1);
       else if (pk.type === 'ammo') player.ammo = Math.min(CFG.AMMO_CAP, player.ammo + CFG.AMMO_PER_BOX);
@@ -665,17 +692,21 @@ function updatePickups(dt) {
 }
 function startWolvSweep() {
   if (wolvSweep) return;
-  wolvSweep = { x: game.camX - 90, t: 0 };
+  wolvSweep = { x: game.camX - 100, t: 0, lastArc: 0 };
   AudioSys.sfx('roar');
 }
 function updateWolvSweep(dt) {
   if (!wolvSweep) return;
   wolvSweep.t += dt;
   wolvSweep.x += CFG.WOLV_SWEEP_V * dt;
-  for (const e of [...enemies]) {
-    if (Math.abs(e.x - wolvSweep.x) < 90) killEnemy(e, false);
+  if (wolvSweep.t - wolvSweep.lastArc > 0.12) {
+    wolvSweep.lastArc = wolvSweep.t;
+    slashFx(wolvSweep.x + 70, CFG.GROUND_Y - 110, false);
   }
-  if (wolvSweep.x > game.camX + CFG.W + 120) wolvSweep = null;
+  for (const e of [...enemies]) {
+    if (Math.abs(e.x - wolvSweep.x) < 95) killEnemy(e, false);
+  }
+  if (wolvSweep.x > game.camX + CFG.W + 130) wolvSweep = null;
 }
 
 /* ============================ BOSSES ============================== */
@@ -683,20 +714,20 @@ function startJuggernaut() {
   game.arenaLock = { x0: game.camX };
   enemies = []; projectiles = projectiles.filter(p => !p.hostile);
   boss = {
-    kind: 'juggernaut', x: game.camX + 780, y: CFG.GROUND_Y, hp: CFG.JUGG_HP,
-    state: 'intro', t: 0, fi: 0, ft: 0, facingRight: false, dead: false,
-    dashDir: -1, hitT: 0,
+    kind: 'juggernaut', x: game.camX + 790, y: CFG.GROUND_Y, hp: CFG.JUGG_HP,
+    state: 'intro', t: 0, stT: 0, facingRight: false, dead: false,
+    dashDir: -1, hitT: 0, sink: 0, autoScene: 0, ph: 1.3,
   };
   AudioSys.sfx('roar');
-  say('deadpool', 'L3');
+  say('cable', 'L3');
 }
-function startLoki() {
+function startFinalBoss() {
   game.arenaLock = { x0: game.camX };
   enemies = []; projectiles = projectiles.filter(p => !p.hostile);
   boss = {
-    kind: 'loki', x: game.camX + CFG.W + 120, y: CFG.GROUND_Y, hp: CFG.LOKI_HP,
-    state: 'enter', t: 0, fi: 0, ft: 0, facingRight: false, dead: false,
-    helmetOn: false, waveCd: 2.2, hitT: 0, driftDir: -1, autoScene: 0,
+    kind: 'thanos', x: game.camX + CFG.W + 130, y: CFG.GROUND_Y, hp: CFG.BOSS_HP,
+    state: 'enter', t: 0, stT: 0, facingRight: false, dead: false,
+    helmetOn: false, waveCd: 2.2, hitT: 0, driftDir: -1, autoScene: 0, sink: 0, ph: 2.6,
   };
   game.musicNow = 'boss';
   AudioSys.playMusic('boss');
@@ -706,38 +737,35 @@ function bossHit(kind, box) {
   if (!rectsOverlap(box, enemyBox(boss))) return false;
   if (boss.kind === 'juggernaut') {
     if (boss.state === 'dazed') {
-      boss.hp--; boss.hitT = 0.25; spark(boss.x, boss.y - 140, 1.4); AudioSys.sfx('clang');
+      boss.hp--; boss.hitT = 0.25; spark(boss.x, boss.y - 150, 1.6); AudioSys.sfx('clang');
       if (boss.hp <= 0) juggDefeated();
     } else {
-      spark(boss.x + (player.facing * 60), boss.y - 120, 0.8);
+      spark(boss.x + (player.facing * 60), boss.y - 130, 1);
       AudioSys.sfx('clang');
     }
     return true;
   }
-  if (boss.kind === 'loki') {
-    if (boss.state === 'enter' || boss.autoScene) return true;
-    if (!boss.helmetOn) {
-      spark(boss.x, boss.y - 150, 1.1);
-      floatText('NO EFFECT', boss.x, boss.y - dispH('loki') - 20, '#9ad1ff');
-      AudioSys.sfx('noeffect');
-    } else {
-      boss.hp--; boss.hitT = 0.3; spark(boss.x, boss.y - 150, 1.5); AudioSys.sfx('hurt');
-      if (boss.hp <= 0) lokiDefeated();
-    }
-    return true;
+  // thanos
+  if (boss.state === 'enter' || boss.autoScene > 0) return true;
+  if (!boss.helmetOn) {
+    spark(boss.x, boss.y - 160, 1.3);
+    floatText('NO EFFECT', boss.x, boss.y - dispH('thanos') - 20, '#9ad1ff');
+    AudioSys.sfx('noeffect');
+  } else {
+    boss.hp--; boss.hitT = 0.3; spark(boss.x, boss.y - 160, 1.7); AudioSys.sfx('hurt');
+    if (boss.hp <= 0) bossDefeated();
   }
-  return false;
+  return true;
 }
 function juggDefeated() {
-  boss.dead = true; boss.state = 'defeat'; boss.fi = 0;
-  poof(boss.x, boss.y - 120, 2.6);
-  say('deadpool', 'L4');
+  boss.dead = true; boss.state = 'defeat'; boss.hitT = 0;
+  poof(boss.x, boss.y - 130, 2.8);
+  say('cable', 'L4');
   pickups.push({ type: 'helmet', x: boss.x, y: CFG.GROUND_Y, t: 0 });
-  game.beat = 'helmetwait';
-  // arena stays locked until the helmet is collected
+  game.beat = 'helmetwait';   // arena stays locked until the helmet is collected
 }
-function lokiDefeated() {
-  boss.dead = true; boss.state = 'defeat'; boss.fi = 0; boss.hitT = 0;
+function bossDefeated() {
+  boss.dead = true; boss.state = 'defeat'; boss.hitT = 0;
   projectiles = projectiles.filter(p => !p.hostile);
   AudioSys.stopMusic();
   AudioSys.sfx('jingle');
@@ -746,133 +774,123 @@ function lokiDefeated() {
 function updateBoss(dt) {
   if (!boss) return;
   const b = boss;
-  b.t += dt; b.ft += dt; b.hitT = Math.max(0, b.hitT - dt);
+  b.t += dt; b.stT += dt; b.hitT = Math.max(0, b.hitT - dt);
+  if (b.dead) { b.sink = Math.min(1, b.sink + dt * 0.5); return; }
   if (b.kind === 'juggernaut') updateJugg(b, dt);
-  else updateLoki(b, dt);
+  else updateThanos(b, dt);
 }
 function updateJugg(b, dt) {
-  const animMap = {
-    intro: 'idle', taunt: 'idle', tele: 'idle', dash: 'charge', crash: 'crash',
-    dazed: 'dazed', getup: 'getup', defeat: 'defeat',
-  };
-  const anim = b.hitT > 0 && b.state === 'dazed' ? 'hit' : animMap[b.state] || 'idle';
-  const frames = animFrames('juggernaut', anim);
-  const fps = (CHARS.juggernaut.fps && CHARS.juggernaut.fps[anim]) || 5;
-  if (b.ft > 1 / fps) { b.ft = 0; b.fi = (b.fi + 1) % frames.length; }
-  b.anim = anim;
-  if (b.dead) return;
-
   switch (b.state) {
     case 'intro':
-      if (b.t > 1.6) { b.state = 'taunt'; b.t = 0; }
       b.facingRight = player.x > b.x;
+      if (b.t > 1.6) { b.state = 'taunt'; b.stT = 0; }
       break;
     case 'taunt':
       b.facingRight = player.x > b.x;
-      if (b.t > 1.1) { b.state = 'tele'; b.t = 0; AudioSys.sfx('roar'); }
+      if (b.stT > 1.1) { b.state = 'tele'; b.stT = 0; AudioSys.sfx('roar'); }
       break;
     case 'tele':
       game.shake = 3;
-      if (b.t > CFG.JUGG_TELE_T) {
-        b.state = 'dash'; b.t = 0; b.fi = 0;
+      if (b.stT > CFG.JUGG_TELE_T) {
+        b.state = 'dash'; b.stT = 0;
         b.dashDir = player.x > b.x ? 1 : -1;
         b.facingRight = b.dashDir > 0;
       }
       break;
     case 'dash': {
       b.x += b.dashDir * CFG.JUGG_DASH_V * dt;
-      const dashBox = { x: b.x - 70, y: b.y - 190, w: 140, h: 190 };
+      const dashBox = { x: b.x - 75, y: b.y - 200, w: 150, h: 200 };
       if (rectsOverlap(dashBox, playerHurtBox())) hurtPlayer();
-      const wallL = game.arenaLock.x0 + 70, wallR = game.arenaLock.x0 + CFG.W - 70;
+      const wallL = game.arenaLock.x0 + 80, wallR = game.arenaLock.x0 + CFG.W - 80;
       if (b.x <= wallL || b.x >= wallR) {
         b.x = Math.max(wallL, Math.min(wallR, b.x));
-        b.state = 'crash'; b.t = 0; b.fi = 0;
+        b.state = 'crash'; b.stT = 0;
         game.shake = 10; AudioSys.sfx('crash');
       }
       break;
     }
     case 'crash':
-      if (b.t > 0.5) { b.state = 'dazed'; b.t = 0; b.fi = 0; }
+      if (b.stT > 0.5) { b.state = 'dazed'; b.stT = 0; }
       break;
     case 'dazed':
-      if (b.t > CFG.JUGG_DAZED_T) { b.state = 'getup'; b.t = 0; b.fi = 0; }
+      if (b.stT > CFG.JUGG_DAZED_T) { b.state = 'getup'; b.stT = 0; }
       break;
     case 'getup':
-      if (b.t > 0.6) { b.state = 'taunt'; b.t = 0; }
+      if (b.stT > 0.6) { b.state = 'taunt'; b.stT = 0; }
       break;
   }
 }
-function updateLoki(b, dt) {
-  const anim = b.dead ? 'defeat' : b.hitT > 0 ? 'hit' : b.state === 'cast' ? 'cast' : 'idle';
-  const frames = animFrames('loki', anim);
-  const fps = (CHARS.loki.fps && CHARS.loki.fps[anim]) || 4;
-  if (b.ft > 1 / fps) {
-    b.ft = 0; b.fi++;
-    if (b.fi >= frames.length) {
-      if (b.state === 'cast' && !b.dead) { b.state = 'fight'; }
-      b.fi = b.dead ? frames.length - 1 : 0;
-    }
-  }
-  b.anim = anim;
-  if (b.dead) return;
-
+function updateThanos(b, dt) {
   if (b.autoScene > 0) {
     b.autoScene -= dt;
     if (b.autoScene <= 0) {
       b.autoScene = 0;
       b.helmetOn = true; player.hasHelmet = false;
       player.state = 'normal';
-      floatText('NOW HIT HIM!', b.x, b.y - dispH('loki') - 30, '#ffe066');
+      floatText('NOW HIT HIM!', b.x, b.y - dispH('thanos') - 30, '#ffe066');
       AudioSys.sfx('helmet');
     }
     return;
   }
+  const touchPlace = () => {
+    if (player.hasHelmet && !b.helmetOn && rectsOverlap(playerHurtBox(), enemyBox(b))) {
+      b.autoScene = 1.5; b.state = 'fight'; b.stT = 0;
+      player.state = 'place'; player.stateT = 1.5; player.stateDur = 1.5;
+      player.facing = b.x > player.x ? 1 : -1;
+      return true;
+    }
+    return false;
+  };
   switch (b.state) {
     case 'enter':
       b.x -= 160 * dt;
-      if (b.x <= game.arenaLock.x0 + 760) {
-        b.x = game.arenaLock.x0 + 760;
-        b.state = 'fight'; b.t = 0;
-        say('deadpool', 'L5');
+      if (b.x <= game.arenaLock.x0 + 770) {
+        b.x = game.arenaLock.x0 + 770;
+        b.state = 'fight'; b.stT = 0;
+        say('cable', 'L5');
       }
       break;
     case 'fight': {
       b.facingRight = player.x > b.x;
-      // slow drift near the right side of the arena
       const x0 = game.arenaLock.x0;
       b.x += b.driftDir * 40 * dt;
-      if (b.x < x0 + 620) b.driftDir = 1;
-      if (b.x > x0 + 840) b.driftDir = -1;
+      if (b.x < x0 + 630) b.driftDir = 1;
+      if (b.x > x0 + 850) b.driftDir = -1;
       b.waveCd -= dt;
       if (b.waveCd <= 0) {
-        b.state = 'cast'; b.fi = 0; b.ft = 0; b.castFired = false;
-        b.waveCd = b.helmetOn ? CFG.LOKI_WAVE_CD_FAST : CFG.LOKI_WAVE_CD;
+        b.state = 'cast'; b.stT = 0; b.castFired = false;
+        b.waveCd = b.helmetOn ? CFG.WAVE_CD_FAST : CFG.WAVE_CD;
       }
-      // touch with helmet -> place it
-      if (player.hasHelmet && !b.helmetOn &&
-          rectsOverlap(playerHurtBox(), enemyBox(b))) {
-        b.autoScene = 1.5;
-        player.state = 'place'; player.stateT = 1.5;
-        player.facing = b.x > player.x ? 1 : -1;
-      }
+      touchPlace();
       break;
     }
-    case 'cast':
-      if (b.fi >= 2 && !b.castFired) {
+    case 'cast': {
+      const p = b.stT / 0.7;
+      if (p >= 0.5 && !b.castFired) {
         b.castFired = true;
         projectiles.push({
-          type: 'wave', x: b.x - 70, y: CFG.GROUND_Y,
+          type: 'wave', x: b.x - 80, y: CFG.GROUND_Y,
           vx: -CFG.WAVE_SPEED, t: 0, hostile: true,
         });
         AudioSys.sfx('wave');
       }
-      if (player.hasHelmet && !b.helmetOn &&
-          rectsOverlap(playerHurtBox(), enemyBox(b))) {
-        b.autoScene = 1.5; b.state = 'fight';
-        player.state = 'place'; player.stateT = 1.5;
-      }
+      if (p >= 1) { b.state = 'fight'; b.stT = 0; }
+      touchPlace();
       break;
+    }
   }
+}
+function bossPose(b) {
+  if (b.dead) return 'ko';
+  if (b.hitT > 0 && b.state === 'dazed') return 'hit';
+  if (b.kind === 'juggernaut') {
+    return { intro: 'idle', taunt: 'idle', tele: 'idle', dash: 'charge', crash: 'crash',
+             dazed: 'dazed', getup: 'getup' }[b.state] || 'idle';
+  }
+  if (b.hitT > 0) return 'hit';
+  if (b.state === 'enter') return 'move';
+  if (b.state === 'cast') return 'cast';
+  return 'idle';
 }
 
 /* ============================ CUTSCENES =========================== */
@@ -884,80 +902,71 @@ function updateCut(dt) {
   if (!s) { cut = null; return; }
   if (s.on && !s.ran) { s.ran = true; s.on(); }
   if (cut.t >= (s.d || 0)) { cut.i++; cut.t = 0; }
-  if (cut.i >= cut.steps.length) {
-    cut = null;
-  }
+  if (cut.i >= cut.steps.length) cut = null;
 }
+function actor(kind) { return actors.find(a => a.kind === kind); }
 function startCutscene1() {
   game.beat = 'cut1';
   enemies = []; projectiles = [];
-  const sx = game.camX;
-  actors.push({ kind: 'sabretooth', x: sx + CFG.W + 80, y: CFG.GROUND_Y, anim: 'stalk', fi: 0, ft: 0, facingRight: false, vis: true });
+  actors.push({ kind: 'sabretooth', x: game.camX + CFG.W + 90, y: CFG.GROUND_Y,
+                pose: 'stalk', t: 0, facingRight: false, vx: 0, ph: 0.7 });
   runCut([
-    { d: 2.0, on: () => {} },                                    // Sabretooth stalks in (moved in updateActors)
-    { d: 0.9, on: () => { actorSet('sabretooth', 'snarl'); AudioSys.sfx('roar'); } },
+    { d: 2.0 },                                                  // Sabretooth stalks in
+    { d: 0.9, on: () => { const s = actor('sabretooth'); s.pose = 'snarl'; AudioSys.sfx('roar'); } },
     { d: 0.9, on: () => {                                        // Wolverine dashes in
-        actors.push({ kind: 'wolverine', x: game.camX - 90, y: CFG.GROUND_Y, anim: 'run', fi: 0, ft: 0, facingRight: true, vis: true, vx: 620 });
+        actors.push({ kind: 'wolverine', x: game.camX - 100, y: CFG.GROUND_Y,
+                      pose: 'run', t: 0, facingRight: true, vx: 620, stopAt: game.camX + 470, ph: 1.9 });
       } },
-    { d: 1.2, on: () => { actorSet('wolverine', 'idle'); say('wolverine', 'L1'); } },
-    { d: 0.7, on: () => { actorSet('wolverine', 'slash'); AudioSys.sfx('slash'); } },
+    { d: 1.2, on: () => { const w = actor('wolverine'); w.pose = 'idle'; w.vx = 0; say('wolverine', 'L1'); } },
+    { d: 0.7, on: () => {
+        const w = actor('wolverine');
+        w.pose = 'slash'; w.poseT = 0; w.poseDur = 0.7;
+        slashFx(w.x + 95, CFG.GROUND_Y - 120, false);
+        AudioSys.sfx('slash');
+      } },
     { d: 1.6, on: () => {                                        // comedic head pop
-        const st = actors.find(a => a.kind === 'sabretooth');
-        st.anim = 'ko'; st.fi = 0;
-        st.headPop = { x: st.x - 6, y: st.y - 170, vy: -560, vx: 85, t: 0 };
-        poof(st.x, st.y - 150, 1.6);
+        const st = actor('sabretooth');
+        st.kind = 'sab_ko'; st.pose = 'ko'; st.sink = 0;
+        st.headPop = { x: st.x - 6, y: st.y - 185, vy: -560, vx: 85, t: 0 };
+        poof(st.x, st.y - 165, 1.8);
       } },
-    { d: 2.2, on: () => { say('deadpool', 'L2'); } },
+    { d: 2.2, on: () => { say('cable', 'L2'); } },
     { d: 1.2, on: () => {                                        // Wolverine runs off right
-        const w = actors.find(a => a.kind === 'wolverine');
-        w.anim = 'run'; w.vx = 700; w.facingRight = true;
-        const st = actors.find(a => a.kind === 'sabretooth');
-        if (st) st.fadeOut = true;
+        const w = actor('wolverine');
+        w.pose = 'run'; w.vx = 700; w.facingRight = true; w.stopAt = null;
       } },
     { d: 0.2, on: () => { actors = []; nextBeat('phase2'); } },
   ]);
 }
-function actorSet(kind, anim) {
-  const a = actors.find(a => a.kind === kind);
-  if (a) { a.anim = anim; a.fi = 0; a.ft = 0; a.vx = 0; }
-}
 function updateActors(dt) {
   for (const a of [...actors]) {
-    a.ft += dt;
-    const c = CHARS[a.kind];
-    const fps = (c.fps && c.fps[a.anim]) || 6;
-    const frames = animFrames(a.kind, a.anim);
-    if (a.ft > 1 / fps) {
-      a.ft = 0; a.fi++;
-      if (a.fi >= frames.length) a.fi = ['ko', 'snarl'].includes(a.anim) ? frames.length - 1 : 0;
+    a.t += dt;
+    if (a.poseT != null) a.poseT += dt;
+    if (a.vx) {
+      a.x += a.vx * dt;
+      if (a.stopAt != null && a.vx > 0 && a.x >= a.stopAt) { a.x = a.stopAt; a.vx = 0; }
     }
-    if (a.vx) a.x += a.vx * dt;
-    if (a.kind === 'sabretooth' && a.anim === 'stalk') {
+    if (a.kind === 'sabretooth' && a.pose === 'stalk') {
       const target = game.camX + 660;
       if (a.x > target) a.x -= 240 * dt;
     }
+    if (a.pose === 'ko') a.sink = Math.min(1, (a.sink || 0) + dt * 0.35);
     if (a.headPop) {
       const h = a.headPop;
       h.t += dt; h.vy += 1150 * dt; h.x += h.vx * dt; h.y += h.vy * dt;
-      if (h.y > CFG.GROUND_Y - 14) { h.y = CFG.GROUND_Y - 14; h.vy = -h.vy * 0.45; h.vx *= 0.7; }
+      if (h.y > CFG.GROUND_Y - 16) { h.y = CFG.GROUND_Y - 16; h.vy = -h.vy * 0.45; h.vx *= 0.7; }
     }
-    if (a.fadeOut) {
-      a.alpha = (a.alpha == null ? 1 : a.alpha) - dt * 0.8;
-      if (a.alpha <= 0) actors.splice(actors.indexOf(a), 1);
-    }
-    if (a.x > game.camX + CFG.W + 140 && a.vx > 0) actors.splice(actors.indexOf(a), 1);
+    if (a.x > game.camX + CFG.W + 150 && a.vx > 0) actors.splice(actors.indexOf(a), 1);
   }
 }
 function startEnding() {
   projectiles = []; enemies = [];
-  actors.push({ kind: 'wolverine', x: game.camX - 90, y: CFG.GROUND_Y, anim: 'run', fi: 0, ft: 0, facingRight: true, vis: true, vx: 420 });
+  actors.push({ kind: 'wolverine', x: game.camX - 100, y: CFG.GROUND_Y,
+                pose: 'run', t: 0, facingRight: true, vx: 420, stopAt: player.x - 140, ph: 0.4 });
   runCut([
-    { d: 1.4, on: () => {} },
-    { d: 0.4, on: () => {
-        const w = actors.find(a => a.kind === 'wolverine');
-        if (w) { w.vx = 0; w.anim = 'idle'; w.x = player.x - 130; }
-      } },
-    { d: 3.0, on: () => { say('deadpool', 'L6'); } },
+    { d: 1.6 },
+    { d: 0.4, on: () => { const w = actor('wolverine'); if (w) { w.vx = 0; w.pose = 'idle'; } } },
+    { d: 3.0, on: () => { say('cable', 'L6'); } },
     { d: 2.0, on: () => { game.fadeDir = 1; } },
     { d: 0.4, on: () => {
         game.mode = 'congrats'; game.congratsT = 0; game.fade = 0; game.fadeDir = 0;
@@ -976,7 +985,7 @@ function nextBeat(b) {
     if (game.musicNow !== 'level') { game.musicNow = 'level'; AudioSys.playMusic('level'); }
   }
   if (b === 'jugg') { game.checkpoint = 'jugg'; startJuggernaut(); }
-  if (b === 'loki') { game.checkpoint = 'loki'; startLoki(); }
+  if (b === 'boss') { game.checkpoint = 'boss'; startFinalBoss(); }
   if (b === 'ending') startEnding();
 }
 function restartCheckpoint() {
@@ -984,24 +993,24 @@ function restartCheckpoint() {
   const keep = { ammo: player.ammo, weapon: player.weapon, hasHelmet: player.hasHelmet };
   resetWorld();
   Object.assign(player, keep);
-  if (cp === 'jugg' || cp === 'loki') {
-    if (cp === 'loki' && !player.hasHelmet) player.hasHelmet = true;  // safety: helmet is required
+  if (cp === 'jugg' || cp === 'boss') {
+    if (cp === 'boss' && !player.hasHelmet) player.hasHelmet = true;  // the helmet is required
     game.beat = cp; game.beatT = 0;
     game.camX = 0; player.x = 300;
-    if (cp === 'jugg') startJuggernaut(); else startLoki();
+    if (cp === 'jugg') startJuggernaut(); else startFinalBoss();
     game.checkpoint = cp;
   } else {
     nextBeat(cp);
   }
   game.mode = 'play';
-  if (cp !== 'loki' && game.musicNow !== 'level') { game.musicNow = 'level'; AudioSys.playMusic('level'); }
+  if (cp !== 'boss' && game.musicNow !== 'level') { game.musicNow = 'level'; AudioSys.playMusic('level'); }
 }
 function updateBeat(dt) {
   const inCombat = ['phase1', 'phase2', 'phase3'].includes(game.beat);
   if (inCombat && !cut) game.beatT += dt;
   if (game.beat === 'phase1' && game.beatT >= CFG.PHASE1_T) startCutscene1();
   else if (game.beat === 'phase2' && game.beatT >= CFG.PHASE2_T) nextBeat('jugg');
-  else if (game.beat === 'phase3' && game.beatT >= CFG.PHASE3_T) nextBeat('loki');
+  else if (game.beat === 'phase3' && game.beatT >= CFG.PHASE3_T) nextBeat('boss');
 }
 
 /* ============================ UPDATE ============================== */
@@ -1021,6 +1030,8 @@ function update(dt) {
     updatePickups(dt);
     updateWolvSweep(dt);
     updateBeat(dt);
+  } else if (boss && boss.dead) {
+    boss.sink = Math.min(1, boss.sink + dt * 0.4);
   }
   for (const f of [...fxs]) { f.t += dt; if (f.t > 0.45) fxs.splice(fxs.indexOf(f), 1); }
   for (const f of [...floaters]) { f.t += dt; if (f.t > 1.2) floaters.splice(floaters.indexOf(f), 1); }
@@ -1045,127 +1056,126 @@ function text(s, x, y, size = 16, color = '#fff', align = 'left', bold = true) {
 }
 function drawBackground() {
   ctx.drawImage(IMG.bg_sky, 0, 0, CFG.W, CFG.H);
-  // far ruins: parallax 0.3x
   const fw = 1024, fh = 160;
-  let fx0 = -((game.camX * 0.3) % fw);
+  const fx0 = -((game.camX * 0.3) % fw);
   for (let x = fx0 - fw; x < CFG.W + fw; x += fw) {
     ctx.drawImage(IMG.bg_far, px(x), CFG.GROUND_Y - fh + 24, fw, fh);
   }
-  // ground: 1:1
   const gw = 512, gh = 96;
-  let gx0 = -(game.camX % gw);
+  const gx0 = -(game.camX % gw);
   for (let x = gx0 - gw; x < CFG.W + gw; x += gw) {
     ctx.drawImage(IMG.bg_ground, px(x), CFG.GROUND_Y - 10, gw, gh);
-  }
-  // scattered props from the rips (anchored to the ground)
-  const seed = Math.floor(game.camX / 900);
-  for (let i = seed - 1; i <= seed + 2; i++) {
-    const rx = i * 900 + ((i * 7919) % 500);
-    const name = (i % 2 === 0) ? 'barrel' : 'rock';
-    const s = name === 'barrel' ? 0.55 : 0.45;
-    const fr = fxFrame(name);
-    if (fr) drawFx(name, rx, CFG.GROUND_Y - fr[3] * s / 2 + 6, s, { alpha: 0.9 });
   }
 }
 function drawEnemies() {
   for (const e of enemies) {
-    drawChar(e.kind, e.state === 'attack' ? 'attack' : 'move', e.fi, e.x, e.y + (e.yOff || 0), e.facingRight);
+    const c = CHARS[e.kind];
+    drawMist(e.x, e.kind);
+    const pose = e.state === 'attack' ? 'attack'
+      : c.hover ? 'hover' : 'move';
+    drawPuppet(e.kind, pose, e.x, e.y, e.facingRight,
+               { t: e.t, ph: e.ph, p: e.state === 'attack' ? e.stT / CFG.ATK_T : 0 });
   }
 }
 function drawBoss() {
   if (!boss) return;
   const b = boss;
-  const opts = { flash: !b.dead && b.hitT > 0 };
-  const anim = b.dead ? 'defeat' : (b.anim || 'idle');
-  drawChar(b.kind, anim, b.dead ? 99 : b.fi, b.x, b.y, b.facingRight, opts);
-  if (b.kind === 'loki' && b.helmetOn) {
-    const hh = dispH('loki');
-    drawFx('helmet', b.x + (b.facingRight ? 6 : -6), b.y - hh * 0.86, 1.7, { flip: b.facingRight });
+  drawMist(b.x, b.kind);
+  drawPuppet(b.kind, bossPose(b), b.x, b.y, b.facingRight,
+             { t: b.t, ph: b.ph, flash: !b.dead && b.hitT > 0, sink: b.sink,
+               p: b.state === 'cast' ? b.stT / 0.7 : b.state === 'getup' ? b.stT / 0.6 : 0 });
+  if (b.kind === 'thanos' && b.helmetOn && !b.dead) {
+    const hh = dispH('thanos');
+    drawPiece('helmet', b.x + (b.facingRight ? 5 : -5), b.y - hh * 0.93, 66,
+              { rot: b.facingRight ? 0.06 : -0.06 });
   }
   if (b.kind === 'juggernaut' && b.state === 'dazed') {
-    // stars circling the dazed head
     for (let i = 0; i < 3; i++) {
       const a = game.time * 5 + i * 2.1;
-      const sx = b.x + Math.cos(a) * 60 - game.camX, sy = b.y - 205 + Math.sin(a) * 14;
-      text('*', sx, sy, 22, '#ffe066', 'center');
+      text('*', b.x + Math.cos(a) * 62 - game.camX, b.y - 225 + Math.sin(a) * 15, 22, '#ffe066', 'center');
     }
   }
-  if (!b.dead && b.kind === 'loki' && b.state !== 'enter') {
-    // boss HP pips
-    for (let i = 0; i < CFG.LOKI_HP; i++) {
-      ctx.fillStyle = i < b.hp ? '#59d659' : '#333';
-      ctx.fillRect(CFG.W / 2 - 40 + i * 30, 54, 22, 10);
-      ctx.strokeStyle = '#000'; ctx.strokeRect(CFG.W / 2 - 40 + i * 30, 54, 22, 10);
+  if (!b.dead) {
+    const label = b.kind === 'juggernaut'
+      ? 'JUGGERNAUT — HIT HIM WHILE HE IS DOWN'
+      : b.helmetOn ? 'THANOS (VULNERABLE!)' : 'THANOS — NO EFFECT WITHOUT THE HELMET';
+    const hpMax = b.kind === 'juggernaut' ? CFG.JUGG_HP : CFG.BOSS_HP;
+    if (b.kind !== 'thanos' || b.state !== 'enter') {
+      text(label, CFG.W / 2, 34, 14, b.kind === 'juggernaut' ? '#fbb' : '#c9f', 'center');
+      for (let i = 0; i < hpMax; i++) {
+        ctx.fillStyle = i < b.hp ? (b.kind === 'juggernaut' ? '#d65959' : '#59d659') : '#333';
+        ctx.fillRect(CFG.W / 2 - 40 + i * 30, 54, 22, 10);
+        ctx.strokeStyle = '#000'; ctx.strokeRect(CFG.W / 2 - 40 + i * 30, 54, 22, 10);
+      }
     }
-    text(boss.helmetOn ? 'LOKI (VULNERABLE!)' : 'LOKI — NO EFFECT WITHOUT THE HELMET', CFG.W / 2, 34, 14, '#c9f', 'center');
-  }
-  if (!b.dead && b.kind === 'juggernaut') {
-    for (let i = 0; i < CFG.JUGG_HP; i++) {
-      ctx.fillStyle = i < b.hp ? '#d65959' : '#333';
-      ctx.fillRect(CFG.W / 2 - 40 + i * 30, 54, 22, 10);
-      ctx.strokeStyle = '#000'; ctx.strokeRect(CFG.W / 2 - 40 + i * 30, 54, 22, 10);
-    }
-    text('JUGGERNAUT — HIT HIM WHILE HE IS DOWN', CFG.W / 2, 34, 14, '#fbb', 'center');
   }
 }
 function drawActors() {
   for (const a of actors) {
-    drawChar(a.kind, a.anim, a.fi, a.x, a.y, a.facingRight, { alpha: a.alpha });
-    if (a.headPop) drawFx('head', a.headPop.x, a.headPop.y, 1.9, { rot: a.headPop.t * 9, alpha: a.alpha });
+    drawMist(a.x, a.kind);
+    const dur = a.poseDur || 0.7;
+    drawPuppet(a.kind, a.pose, a.x, a.y, a.facingRight,
+               { t: a.t, ph: a.ph, sink: a.sink, alpha: a.alpha,
+                 p: a.poseT != null ? a.poseT / dur : 0 });
+    if (a.headPop) drawPiece('sab_head', a.headPop.x, a.headPop.y, 62, { rot: a.headPop.t * 9 });
   }
 }
 function drawPlayer() {
   const p = player;
-  if (p.inv > 0 && Math.floor(p.inv * 18) % 2 === 0 && p.flash <= 0) return; // i-frame flicker
-  const opts = { flash: p.flash > 0 };
-  drawChar('deadpool', p.anim, p.fi, p.x, p.y, p.facing > 0, opts);
-  if (p.state === 'place') drawFx('helmet', p.x + p.facing * 52, p.y - 96, 1.5);
-  if (p.hasHelmet && p.state !== 'place') drawFx('helmet', p.x - p.facing * 34, p.y - dispH('deadpool') - 4, 1.0);
+  if (p.inv > 0 && Math.floor(p.inv * 18) % 2 === 0 && p.flash <= 0) return;
+  drawMist(p.x, 'cable');
+  const pose = playerPose();
+  drawPuppet('cable', pose, p.x, p.y, p.facing > 0,
+             { flash: p.flash > 0, vy: p.vy,
+               p: p.stateDur ? 1 - p.stateT / p.stateDur : 0 });
+  if (p.state === 'place') drawPiece('helmet', p.x + p.facing * 62, p.y - 120, 64, { mirror: p.facing < 0 });
+  else if (p.hasHelmet) drawPiece('helmet', p.x - p.facing * 40, p.y - dispH('cable') - 10, 44);
 }
 function drawProjectiles() {
   for (const pr of projectiles) {
-    if (pr.type === 'tracer') drawUiWorld('tracer', pr.x, pr.y, pr.vx < 0);
-    else if (pr.type === 'mgtracer') drawUiWorld('mgtracer', pr.x, pr.y, pr.vx < 0);
-    else if (pr.type === 'shard') drawFx('shard', pr.x, pr.y, 0.5, { rot: pr.t * 10 });
-    else if (pr.type === 'bolt') drawFx(Math.floor(pr.t * 14) % 2 ? 'bolt1' : 'bolt0', pr.x, pr.y, 0.6, { flip: pr.vx > 0 });
+    if (pr.type === 'tracer') drawUiWorld('tracer', pr.x, pr.y, { flip: pr.vx < 0 });
+    else if (pr.type === 'mgtracer') drawUiWorld('mgtracer', pr.x, pr.y, { flip: pr.vx < 0 });
+    else if (pr.type === 'photon') drawUiWorld(Math.floor(pr.t * 12) % 2 ? 'photon1' : 'photon0', pr.x, pr.y);
+    else if (pr.type === 'sword') drawUiWorld('sword', pr.x, pr.y, { rot: pr.t * 12 * (pr.vx > 0 ? 1 : -1) });
     else if (pr.type === 'wave') {
-      const pulse = 0.62 + Math.sin(pr.t * 16) * 0.07;
-      drawFx(Math.floor(pr.t * 10) % 2 ? 'wave1' : 'wave0', pr.x, pr.y - 34, pulse, { flip: pr.vx > 0 });
+      const pulse = 1 + Math.sin(pr.t * 14) * 0.1;
+      drawUiWorld(Math.floor(pr.t * 10) % 2 ? 'wave1' : 'wave0', pr.x, pr.y - 30,
+                  { scale: 1.35 * pulse, flip: pr.vx > 0 });
     }
   }
 }
-function drawUiWorld(name, wx, wy, flip) {
-  const fr = ATLAS.ui.frames[name];
-  ctx.save();
-  ctx.translate(px(wx - game.camX), px(wy));
-  if (flip) ctx.scale(-1, 1);
-  ctx.drawImage(IMG.ui, fr[0], fr[1], fr[2], fr[3], -fr[2] / 2, -fr[3] / 2, fr[2], fr[3]);
-  ctx.restore();
-}
 function drawPickups() {
   for (const pk of pickups) {
-    const bobY = pk.y - 26 + Math.sin(pk.t * 5 + pk.x) * 5;
+    const bobY = pk.y - 28 + Math.sin(pk.t * 5 + pk.x) * 5;
     if (pk.type === 'heart') drawUiWorld('heart', pk.x, bobY);
     else if (pk.type === 'ammo') drawUiWorld('bulletbox', pk.x, bobY);
     else if (pk.type === 'wbox') drawUiWorld('wbox', pk.x, bobY);
     else if (pk.type === 'helmet') {
-      drawFx('helmet', pk.x, bobY - 6, 1.6);
-      text('PICK UP THE HELMET!', pk.x - game.camX, bobY - 90, 13, '#ffe066', 'center');
+      drawPiece('helmet', pk.x, bobY - 10, 58);
+      text('PICK UP THE HELMET!', pk.x - game.camX, bobY - 100, 13, '#ffe066', 'center');
     }
   }
 }
 function drawWolvSweep() {
   if (!wolvSweep) return;
-  const fi = Math.floor(wolvSweep.t * 12) % 3;
-  drawChar('wolverine', 'slash', fi, wolvSweep.x, CFG.GROUND_Y, true);
+  drawMist(wolvSweep.x, 'wolverine_bone');
+  drawPuppet('wolverine_bone', 'slash', wolvSweep.x, CFG.GROUND_Y, true,
+             { t: wolvSweep.t, p: (wolvSweep.t * 4) % 1 });
 }
 function drawFxs() {
   for (const f of fxs) {
     if (f.type === 'poof') {
       const fi = Math.min(2, Math.floor(f.t / 0.15));
-      drawFx('poof' + fi, f.x, f.y, f.scale * (1 + f.t), { alpha: 1 - f.t * 1.6 });
+      drawUiWorld('poof' + fi, f.x, f.y, { scale: f.scale * (1 + f.t), alpha: 1 - f.t * 1.6 });
+    } else if (f.type === 'slash') {
+      const fi = f.t < 0.14 ? 0 : 1;
+      drawUiWorld('slash' + fi, f.x, f.y, { scale: f.scale, alpha: 1 - f.t * 2, flip: f.flip });
+    } else if (f.type === 'muzzle') {
+      drawUiWorld('muzzle', f.x, f.y, { scale: f.scale, alpha: 1 - f.t * 4, flip: f.flip });
+    } else if (f.type === 'dust') {
+      drawUiWorld('dust', f.x, f.y, { scale: f.scale * (1 + f.t * 2), alpha: 1 - f.t * 2.4 });
     } else {
-      drawFx('spark', f.x, f.y, f.scale, { alpha: 1 - f.t * 2 });
+      drawUiWorld('spark', f.x, f.y, { scale: f.scale, alpha: 1 - f.t * 2 });
     }
   }
   for (const f of floaters) {
@@ -1182,17 +1192,16 @@ function wrapText(s, maxChars) {
   if (cur.trim()) lines.push(cur.trim());
   return lines;
 }
-function drawBubbleAt(sx, sy, shown, opts = {}) {
+function drawBubbleAt(sx, sy, shown) {
   const lines = wrapText(shown, 26);
   const lineW = Math.max(...lines.map(l => l.length), 4) * 9.7;
   const w = Math.max(90, lineW + 26), h = lines.length * 18 + 20, tail = 16;
   let bx = sx - w * 0.35, by = sy - h - tail;
   bx = Math.max(6, Math.min(CFG.W - w - 6, bx));
   by = Math.max(6, by);
-  const fr = ATLAS.ui.frames.bubble;
-  const C = 15;  // 9-slice corner (bubble sprite is 144x78 incl. tail zone)
-  const bw = fr[2], bh = fr[3] - 18;  // body region above the tail
-  // 9-slice the bubble body
+  const fr = uiFrame('bubble');
+  const C = 15;
+  const bw = fr[2], bh = fr[3] - 18;
   const dxs = [bx, bx + C, bx + w - C], dws = [C, w - 2 * C, C];
   const sxs = [fr[0], fr[0] + C, fr[0] + bw - C], sws = [C, bw - 2 * C, C];
   const dys = [by, by + C, by + h - C], dhs = [C, h - 2 * C, C];
@@ -1200,7 +1209,6 @@ function drawBubbleAt(sx, sy, shown, opts = {}) {
   for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
     ctx.drawImage(IMG.ui, sxs[i], sys_[j], sws[i], shs[j], px(dxs[i]), px(dys[j]), px(dws[i]) + 1, px(dhs[j]) + 1);
   }
-  // tail
   ctx.drawImage(IMG.ui, fr[0] + 18, fr[1] + bh - 4, 30, 22, px(sx - 8), px(by + h - 3), 24, 18);
   lines.forEach((l, i) => {
     ctx.font = 'bold 15px "Courier New", monospace';
@@ -1221,26 +1229,24 @@ function drawHUD() {
   for (let i = 0; i < CFG.MAX_HEARTS; i++) {
     drawUi(i < player.hearts ? 'heart' : 'heart_empty', 14 + i * 52, 12, 0.8);
   }
-  // weapon slot
-  const wx = CFG.W - 150, wy = 10;
+  const wx = CFG.W - 168, wy = 10;
   ctx.fillStyle = 'rgba(0,0,0,0.45)';
-  ctx.fillRect(wx - 8, wy - 2, 150, 46);
-  ctx.strokeStyle = '#fff'; ctx.strokeRect(wx - 8, wy - 2, 150, 46);
+  ctx.fillRect(wx - 8, wy - 2, 168, 46);
+  ctx.strokeStyle = '#fff'; ctx.strokeRect(wx - 8, wy - 2, 168, 46);
   if (player.weapon === 'pistol') {
     drawUi('pistol_icon', wx, wy + 4, 0.55);
     text('∞', wx + 52, wy + 8, 22, '#ffe066');
   } else {
-    drawFxIcon('mgicon', wx, wy + 2, 40);
+    drawUi('mg_icon', wx, wy + 6, 0.45);
     text(String(player.ammo), wx + 52, wy + 10, 20, '#ffe066');
   }
   if (player.mgFlash > 0 && Math.floor(player.mgFlash * 10) % 2 === 0) {
-    drawFxIcon('mgicon', wx + 92, wy + 2, 40);
-    text('0', wx + 128, wy + 10, 16, '#f66');
+    drawUi('mg_icon', wx + 86, wy + 6, 0.45);
+    text('0', wx + 134, wy + 10, 16, '#f66');
   }
-  if (player.hasHelmet) drawFxIcon('helmet', wx + 96, wy + 2, 40);
-  // phase label + combat timer
+  if (player.hasHelmet) drawPiece('helmet', game.camX + wx + 118, wy + 40, 34);
   const label = { phase1: 'PHASE 1', cut1: '', phase2: 'PHASE 2', jugg: 'MID-BOSS',
-                  helmetwait: 'MID-BOSS', phase3: 'PHASE 3', loki: 'FINAL BOSS', ending: '' }[game.beat] || '';
+                  helmetwait: 'MID-BOSS', phase3: 'PHASE 3', boss: 'FINAL BOSS', ending: '' }[game.beat] || '';
   if (label) text(label, CFG.W / 2, 12, 16, '#fff', 'center');
   if (['phase1', 'phase2', 'phase3'].includes(game.beat)) {
     const total = game.beat === 'phase1' ? CFG.PHASE1_T : game.beat === 'phase2' ? CFG.PHASE2_T : CFG.PHASE3_T;
@@ -1248,37 +1254,33 @@ function drawHUD() {
     text(`${Math.floor(remain / 60)}:${String(Math.floor(remain % 60)).padStart(2, '0')}`, CFG.W / 2, 32, 14, '#ffd', 'center');
   }
 }
-function drawFxIcon(name, x, y, size) {
-  const fr = fxFrame(name);
-  if (!fr) return;
-  const s = size / Math.max(fr[2], fr[3]);
-  ctx.drawImage(IMG.fx, fr[0], fr[1], fr[2], fr[3], x, y, fr[2] * s, fr[3] * s);
-}
 function drawTitle() {
   ctx.fillStyle = '#0b0710'; ctx.fillRect(0, 0, CFG.W, CFG.H);
   ctx.drawImage(IMG.bg_sky, 0, 0, CFG.W, CFG.H);
   ctx.fillStyle = 'rgba(10,6,14,0.55)'; ctx.fillRect(0, 0, CFG.W, CFG.H);
-  text('DEADPOOL', CFG.W / 2, 74, 64, '#e02439', 'center');
-  text('vs. THE VOID', CFG.W / 2, 148, 40, '#ffe066', 'center');
-  text('a Marvel: Avengers Alliance sprite fan-game', CFG.W / 2, 200, 14, '#caa', 'center');
+  text('DEADPOOL', CFG.W / 2, 58, 64, '#e02439', 'center');
+  text('vs. THE VOID', CFG.W / 2, 132, 40, '#ffe066', 'center');
+  text('MvC2 official artwork edition — starring CABLE', CFG.W / 2, 184, 16, '#9df', 'center');
+  text('(Marvel vs. Capcom 2 has no Deadpool, so his buddy stepped in)', CFG.W / 2, 206, 13, '#caa', 'center');
   const rows = [
-    ['ARROWS', 'steer (Deadpool always runs) / DOWN = take a knee'],
+    ['ARROWS', 'steer (the merc always runs) / DOWN = take a knee'],
     ['X  (A)', 'jump — straight up or diagonal, hold for height'],
-    ['Z  (B)', 'smart attack: gun at range, katana up close'],
+    ['Z  (B)', 'smart attack: gun at range, blade up close'],
     ['SHIFT', 'toggle pistol / machine gun'],
     ['ENTER', 'start & pause'],
-    ['D', 'debug (hitboxes + frame viewer)'],
+    ['D', 'debug (hitboxes + artwork viewer)'],
   ];
   rows.forEach((r, i) => {
-    text(r[0], CFG.W / 2 - 300, 258 + i * 26, 16, '#ffe066');
-    text(r[1], CFG.W / 2 - 160, 258 + i * 26, 16, '#fff');
+    text(r[0], CFG.W / 2 - 300, 254 + i * 26, 16, '#ffe066');
+    text(r[1], CFG.W / 2 - 160, 254 + i * 26, 16, '#fff');
   });
-  if (Math.floor(game.time * 2) % 2 === 0) text('PRESS ENTER', CFG.W / 2, 448, 26, '#fff', 'center');
+  if (Math.floor(game.time * 2) % 2 === 0) text('PRESS ENTER', CFG.W / 2, 442, 26, '#fff', 'center');
   if (MISSING.length) {
-    text('MISSING ASSETS:', 12, 420, 13, '#f66');
-    MISSING.slice(0, 6).forEach((m, i) => text(m, 12, 438 + i * 15, 12, '#f88'));
+    text('MISSING ASSETS:', 12, 414, 13, '#f66');
+    MISSING.slice(0, 6).forEach((m, i) => text(m, 12, 432 + i * 15, 12, '#f88'));
   }
-  text('Personal non-commercial fan homebrew. Sprites: Marvel Avengers Alliance (Playdom).', CFG.W / 2, 512, 11, '#977', 'center');
+  text('Personal non-commercial fan homebrew. Artwork: Marvel vs. Capcom 2 (Capcom/Marvel),', CFG.W / 2, 498, 11, '#977', 'center');
+  text('from the Retro Game Official Asset Artwork collection on archive.org.', CFG.W / 2, 512, 11, '#977', 'center');
 }
 function drawPause() {
   ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, CFG.W, CFG.H);
@@ -1297,7 +1299,6 @@ function drawGameOver() {
 function drawCongrats(dt) {
   game.congratsT += dt;
   ctx.fillStyle = '#120a18'; ctx.fillRect(0, 0, CFG.W, CFG.H);
-  // starfield sparkle
   for (let i = 0; i < 40; i++) {
     const x = (i * 193) % CFG.W, y = (i * 89) % 200;
     ctx.fillStyle = (Math.floor(game.time * 2 + i) % 3 === 0) ? '#ffe066' : '#443';
@@ -1306,7 +1307,6 @@ function drawCongrats(dt) {
   text('CONGRATS!', CFG.W / 2, 26, 52, '#ffe066', 'center');
   const mm = IMG.mm_big;
   if (mm && mm.width) ctx.drawImage(mm, CFG.W / 2 - 110, 100, 220, 275);
-  // Miss Minutes talks (typewriter)
   const line = LINES.L7.text;
   const t0 = 1.0;
   if (game.congratsT > t0) {
@@ -1325,40 +1325,40 @@ function drawDebug() {
   const pb = playerHurtBox();
   ctx.strokeRect(pb.x - game.camX, pb.y, pb.w, pb.h);
   ctx.strokeStyle = '#ff0';
-  const mb = {
-    x: player.facing > 0 ? player.x + 8 : player.x - 8 - CFG.MELEE_REACH,
-    y: player.y - 180, w: CFG.MELEE_REACH, h: 190,
-  };
+  const mb = meleeBox();
   ctx.strokeRect(mb.x - game.camX, mb.y, mb.w, mb.h);
-  ctx.strokeStyle = '#f00';
   for (const e of enemies) {
+    ctx.strokeStyle = '#f00';
     const b = enemyBox(e);
     ctx.strokeRect(b.x - game.camX, b.y, b.w, b.h);
-    if (e.atkBox) { ctx.strokeStyle = '#f0f'; ctx.strokeRect(e.atkBox.x - game.camX, e.atkBox.y, e.atkBox.w, e.atkBox.h); ctx.strokeStyle = '#f00'; }
+    if (e.atkBox) { ctx.strokeStyle = '#f0f'; ctx.strokeRect(e.atkBox.x - game.camX, e.atkBox.y, e.atkBox.w, e.atkBox.h); }
   }
   if (boss) { const b = enemyBox(boss); ctx.strokeStyle = '#f80'; ctx.strokeRect(b.x - game.camX, b.y, b.w, b.h); }
   ctx.strokeStyle = '#0ff';
-  for (const pr of projectiles) ctx.strokeRect(pr.x - 20 - game.camX, pr.y - 15, 40, 30);
-  text(`beat:${game.beat} t:${game.beatT.toFixed(1)} enemies:${enemies.length} cam:${Math.round(game.camX)} V=frame viewer`, 10, CFG.H - 24, 13, '#0f0');
+  for (const pr of projectiles) ctx.strokeRect(pr.x - 22 - game.camX, pr.y - 16, 44, 32);
+  text(`beat:${game.beat} t:${game.beatT.toFixed(1)} enemies:${enemies.length} cam:${Math.round(game.camX)} V=art viewer`, 10, CFG.H - 24, 13, '#0f0');
 }
 function drawViewer() {
   ctx.fillStyle = '#101018'; ctx.fillRect(0, 0, CFG.W, CFG.H);
-  const names = Object.keys(ATLAS.sheets);
-  game.viewerSheet = (game.viewerSheet + names.length) % names.length;
-  const name = names[game.viewerSheet];
-  const sh = ATLAS.sheets[name];
-  game.viewerFrame = (game.viewerFrame + sh.frames.length) % sh.frames.length;
-  const fr = sh.frames[game.viewerFrame];
-  const s = Math.min(380 / fr[3], 380 / fr[2], 2);
-  ctx.save();
-  ctx.translate(CFG.W / 2, CFG.H / 2 + 60);
-  ctx.strokeStyle = '#444'; ctx.strokeRect(-fr[2] * s / 2, -fr[3] * s, fr[2] * s, fr[3] * s);
-  ctx.drawImage(IMG[name], fr[0], fr[1], fr[2], fr[3], -fr[2] * s / 2, -fr[3] * s, fr[2] * s, fr[3] * s);
-  ctx.restore();
-  const anims = Object.entries(sh.anims).filter(([a, fs]) => fs.includes(game.viewerFrame)).map(([a]) => a).join(', ');
-  text('FRAME VIEWER  (UP/DOWN sheet, LEFT/RIGHT frame, V/ESC exit)', CFG.W / 2, 20, 16, '#ffe066', 'center');
-  text(`${name}  frame ${game.viewerFrame}/${sh.frames.length - 1}  rect ${fr.join(',')}`, CFG.W / 2, 48, 15, '#fff', 'center');
-  text(`used by anims: ${anims || '(none)'}`, CFG.W / 2, 70, 15, '#9cf', 'center');
+  const names = [...Object.keys(ATLAS.chars), ...Object.keys(ATLAS.pieces).map(p => 'piece:' + p)];
+  game.viewerIdx = ((game.viewerIdx % names.length) + names.length) % names.length;
+  const sel = names[game.viewerIdx];
+  const isPiece = sel.startsWith('piece:');
+  const name = isPiece ? sel.slice(6) : sel;
+  const meta = isPiece ? ATLAS.pieces[name] : ATLAS.chars[name];
+  const img = IMG[isPiece ? 'piece_' + name : name];
+  if (img && img.width) {
+    const s = Math.min(380 / meta.h, 500 / meta.w);
+    ctx.save();
+    ctx.translate(CFG.W / 2, CFG.H / 2 + 170);
+    ctx.strokeStyle = '#444'; ctx.strokeRect(-meta.w * s / 2, -meta.h * s, meta.w * s, meta.h * s);
+    ctx.drawImage(img, -meta.w * s / 2, -meta.h * s, meta.w * s, meta.h * s);
+    ctx.restore();
+  }
+  text('ARTWORK VIEWER  (LEFT/RIGHT cycle, V/ESC exit)', CFG.W / 2, 20, 16, '#ffe066', 'center');
+  text(`${sel}  ${meta.w}x${meta.h}px  ${isPiece ? '' : 'native facing: ' + (meta.right ? 'RIGHT' : 'LEFT/frontal')}`,
+       CFG.W / 2, 48, 15, '#fff', 'center');
+  text(`game height: ${CHARS[name] ? CHARS[name].h + 'px' : '(piece)'}`, CFG.W / 2, 70, 15, '#9cf', 'center');
 }
 function render(dt) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1405,10 +1405,8 @@ function handleModes() {
     return;
   }
   if (game.viewer) {
-    if (tap('ArrowUp')) { game.viewerSheet--; game.viewerFrame = 0; }
-    if (tap('ArrowDown')) { game.viewerSheet++; game.viewerFrame = 0; }
-    if (tap('ArrowLeft')) game.viewerFrame--;
-    if (tap('ArrowRight')) game.viewerFrame++;
+    if (tap('ArrowLeft')) game.viewerIdx--;
+    if (tap('ArrowRight')) game.viewerIdx++;
     if (tap('KeyV') || tap('Escape')) game.viewer = false;
     return;
   }
@@ -1422,7 +1420,6 @@ function handleModes() {
     }
     return;
   }
-  // playing
   if (tap('Enter')) { game.mode = 'pause'; game.pauseSel = 0; return; }
   if (tap('KeyD')) game.debug = !game.debug;
   if (game.debug && tap('KeyV')) game.viewer = true;
@@ -1433,7 +1430,7 @@ let last = performance.now(), acc = 0;
 const STEP = 1 / 60;
 function frame(now) {
   requestAnimationFrame(frame);
-  let dt = Math.min(0.1, (now - last) / 1000);
+  const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
   handleModes();
   if (game.mode === 'play') {
